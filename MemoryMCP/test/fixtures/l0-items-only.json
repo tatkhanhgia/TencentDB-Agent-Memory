@@ -1,0 +1,11 @@
+{
+  "items": [
+    {
+      "id": "msg-seed-items",
+      "role": "assistant",
+      "content": "items-only hit: must not be dropped as empty",
+      "timestamp": "2026-08-02T00:00:00.000Z",
+      "score": 0.77
+    }
+  ]
+}

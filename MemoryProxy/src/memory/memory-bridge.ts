@@ -295,10 +295,7 @@ export function createMemoryBridgeHandler(
       typeof inboundBody.session_id === "string" && inboundBody.session_id.trim()
         ? inboundBody.session_id.trim()
         : undefined;
-    const modelTaskId =
-      typeof inboundBody.task_id === "string" && inboundBody.task_id.trim()
-        ? inboundBody.task_id.trim()
-        : undefined;
+    // task_id is an identity dimension — freeze from session, ignore model override.
 
     const upstreamUrl = `${config.coreSkill.endpoint.replace(/\/$/, "")}/v3/${sub}`;
     const upstreamToken =
@@ -314,7 +311,7 @@ export function createMemoryBridgeHandler(
     const ctxs = await resolveMemoryCtxs(config, ids, sessionKey);
     // task_id 优先级：caller 显式传 > session 注入。session_id 保持"仅 caller 显式传"，
     // 因为 search 类希望默认跨 session（agent 维度）；task_id 属于身份维度，仍应强制。
-    const effectiveTaskId = modelTaskId ?? ids.task_id;
+    const effectiveTaskId = ids.task_id;
     const makeOutbound = (target: FixedAssetCtx): Record<string, unknown> => ({
       ...inboundBody,
       user_id: target.userId,
@@ -343,8 +340,13 @@ export function createMemoryBridgeHandler(
         if (r.status !== "fulfilled" || r.value.status < 200 || r.value.status >= 300) continue;
         okCount++;
         try {
-          const env = JSON.parse(r.value.text) as { data?: { items?: unknown[] } };
-          for (const item of env.data?.items ?? []) {
+          const env = JSON.parse(r.value.text) as { data?: { items?: unknown[]; messages?: unknown[] } };
+          const hits = Array.isArray(env.data?.messages)
+            ? env.data!.messages!
+            : Array.isArray(env.data?.items)
+              ? env.data!.items!
+              : [];
+          for (const item of hits) {
             if (!item || typeof item !== "object") continue;
             items.push({
               ...(item as Record<string, unknown>),
@@ -358,13 +360,21 @@ export function createMemoryBridgeHandler(
         }
       }
       items.sort((a, b) => (typeof b.score === "number" ? b.score : 0) - (typeof a.score === "number" ? a.score : 0));
+      if (okCount === 0) {
+        return envelope(50201, `${TAG} all upstream ${sub} targets failed`, 502);
+      }
       const elapsed = (deps.now ?? Date.now)() - t0;
       console.log(`${TAG} sub=${sub} multi targets=${ctxs.length} ok=${okCount} items=${items.length} elapsed=${elapsed}ms`);
+      const sliced = items.slice(0, limit);
       return new Response(JSON.stringify({
         code: 0,
         message: "ok",
         request_id: `mem-bridge-${Date.now()}`,
-        data: { items: items.slice(0, limit), searched_agents: ctxs.map((x) => ({ agent_id: x.agentId, name: x.agentName, role: x.isSelf ? "self" : "imported_from" })) },
+        data: {
+          items: sliced,
+          ...(sub === "conversation/search" ? { messages: sliced } : {}),
+          searched_agents: ctxs.map((x) => ({ agent_id: x.agentId, name: x.agentName, role: x.isSelf ? "self" : "imported_from" })),
+        },
       }), {
         status: 200,
         headers: { "content-type": "application/json" },

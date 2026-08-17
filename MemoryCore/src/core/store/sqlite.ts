@@ -784,6 +784,16 @@ export class VectorStore implements IMemoryStore {
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_l0_user_recorded  ON l0_conversations(user_id, recorded_at)");
     this.db.exec("CREATE INDEX IF NOT EXISTS idx_l0_agent_recorded ON l0_conversations(agent_id, recorded_at)");
 
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS l0_capture_receipts (
+        scope_key TEXT PRIMARY KEY,
+        payload_hash TEXT NOT NULL,
+        accepted_ids TEXT NOT NULL,
+        total_count INTEGER NOT NULL,
+        created_at TEXT NOT NULL
+      )
+    `);
+
     // L0 vector virtual table (cosine distance, same dimensions as L1) — deferred when dimensions=0
     if (this.dimensions > 0) {
       this.db.exec(`
@@ -1771,6 +1781,62 @@ export class VectorStore implements IMemoryStore {
    * **Fault-tolerant**: catches all errors internally, never throws.
    * Returns `true` on success, `false` on failure (logged as warning).
    */
+  getCaptureReceipt(scopeKey: string): {
+    scope_key: string;
+    payload_hash: string;
+    accepted_ids: string[];
+    total_count: number;
+    created_at: string;
+  } | null {
+    if (this.degraded) return null;
+    const row = this.db.prepare(
+      "SELECT scope_key, payload_hash, accepted_ids, total_count, created_at FROM l0_capture_receipts WHERE scope_key = ?",
+    ).get(scopeKey) as
+      | { scope_key: string; payload_hash: string; accepted_ids: string; total_count: number; created_at: string }
+      | undefined;
+    if (!row) return null;
+    let accepted_ids: string[] = [];
+    try { accepted_ids = JSON.parse(row.accepted_ids) as string[]; } catch { accepted_ids = []; }
+    return {
+      scope_key: row.scope_key,
+      payload_hash: row.payload_hash,
+      accepted_ids,
+      total_count: row.total_count,
+      created_at: row.created_at,
+    };
+  }
+
+  claimCaptureReceipt(scopeKey: string, payloadHash: string): boolean {
+    if (this.degraded) return false;
+    const result = this.db.prepare(
+      `INSERT OR IGNORE INTO l0_capture_receipts
+        (scope_key, payload_hash, accepted_ids, total_count, created_at)
+       VALUES (?, ?, '[]', 0, ?)`,
+    ).run(scopeKey, payloadHash, new Date().toISOString());
+    return Number((result as { changes?: number }).changes ?? 0) > 0;
+  }
+
+  putCaptureReceipt(receipt: {
+    scope_key: string;
+    payload_hash: string;
+    accepted_ids: string[];
+    total_count: number;
+    created_at: string;
+  }): void {
+    if (this.degraded) return;
+    this.db.prepare(
+      `INSERT OR REPLACE INTO l0_capture_receipts
+        (scope_key, payload_hash, accepted_ids, total_count, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    ).run(
+      receipt.scope_key,
+      receipt.payload_hash,
+      JSON.stringify(receipt.accepted_ids),
+      receipt.total_count,
+      receipt.created_at,
+    );
+  }
+
   upsertL0(record: L0Record, embedding: Float32Array | undefined): boolean {
     if (this.degraded) {
       this.logger?.warn(`${TAG} [L0-upsert] SKIPPED (degraded mode) id=${record.id}`);

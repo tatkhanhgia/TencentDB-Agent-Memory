@@ -670,6 +670,27 @@ export interface IMemoryStore {
   // ── Memory Audit（修改审计；optional 让 store 可以选择不实现）──
   appendAudit?(entry: AuditEntry): MaybePromise<void>;
   queryAudit?(filter: AuditQueryFilter): MaybePromise<AuditEntry[]>;
+
+  /**
+   * Optional durable capture receipts for `/conversation/add` idempotency.
+   * Keyed by frozen isolation + session + capture_id.
+   */
+  getCaptureReceipt?(scopeKey: string): MaybePromise<{
+    scope_key: string;
+    payload_hash: string;
+    accepted_ids: string[];
+    total_count: number;
+    created_at: string;
+  } | null>;
+  putCaptureReceipt?(receipt: {
+    scope_key: string;
+    payload_hash: string;
+    accepted_ids: string[];
+    total_count: number;
+    created_at: string;
+  }): MaybePromise<void>;
+  /** INSERT OR IGNORE a pending receipt. Returns true if this caller claimed the key. */
+  claimCaptureReceipt?(scopeKey: string, payloadHash: string): MaybePromise<boolean>;
 }
 
 // ============================

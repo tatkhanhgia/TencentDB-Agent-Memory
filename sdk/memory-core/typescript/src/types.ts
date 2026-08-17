@@ -48,10 +48,13 @@ export interface ConversationItem {
 export interface ConversationAddRequest extends IdFields {
   session_id: string;
   messages: ConversationItem[];
+  capture_id?: string;
 }
 export interface ConversationAddData {
   accepted_ids: string[];
   total_count: number;
+  capture_id?: string;
+  duplicate?: boolean;
 }
 
 export interface ConversationQueryRequest extends IdFields {

@@ -30,6 +30,12 @@ import type { MemoryRecord } from "../core/record/l1-writer.js";
 import { reportRecallMetrics } from "../core/report/metric-tracking-recall.js";
 
 // ── Zod schemas (validated types + defaults) ──
+import { handleMemoryRecall } from "./memory-recall.js";
+import {
+  captureScopeKey,
+  evaluateCaptureReceipt,
+  hashCapturePayload,
+} from "./capture-receipt.js";
 import {
   conversationAddRequestSchema,
   conversationQueryRequestSchema,
@@ -169,6 +175,7 @@ const V3_ALLOWED_SUBPATHS = new Set<string>([
   "/core/read",
   "/core/write",
   "/core/count",
+  "/memory/recall",
 ]);
 
 /**
@@ -426,6 +433,7 @@ const DATAPLANE_HANDLERS: Record<string, RouteHandler> = {
   "/core/read": handleCoreRead,
   "/core/write": handleCoreWrite,
   "/core/count": handleCoreCount,
+  "/memory/recall": handleMemoryRecall,
 };
 
 const routeTable: Record<string, RouteHandler> = {
@@ -647,7 +655,7 @@ export async function handleV2Route(
 async function handleConversationAdd(body: unknown, auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
   const parsed = conversationAddRequestSchema.safeParse(body);
   if (!parsed.success) return errorEnvelope(400, formatZodError(parsed.error), requestId);
-  const { session_id, messages } = parsed.data;
+  const { session_id, messages, capture_id } = parsed.data;
 
   // Enforce three-dim isolation. user_id / agent_id come from request body
   // or x-tdai-* headers (resolved in dispatchV2Request).  When the gateway's
@@ -665,6 +673,65 @@ async function handleConversationAdd(body: unknown, auth: V2AuthContext, request
 
   const store = deps.getStore();
   if (!store) return errorEnvelope(503, "Store not available", requestId);
+
+  const payloadHash = capture_id ? hashCapturePayload(messages) : "";
+  const scopeKey = capture_id
+    ? captureScopeKey({
+        serviceId: auth.serviceId,
+        teamId: deps.requestIsolation?.teamId,
+        agentId: deps.requestIsolation?.agentId,
+        userId: deps.requestIsolation?.userId,
+        taskId: deps.requestIsolation?.taskId,
+        sessionId: session_id,
+        captureId: capture_id,
+      })
+    : "";
+
+  if (capture_id && (!store.getCaptureReceipt || !store.putCaptureReceipt)) {
+    return errorEnvelope(501, "capture_id is not supported by this store", requestId);
+  }
+
+  if (capture_id && store.getCaptureReceipt) {
+    const claimed = store.claimCaptureReceipt
+      ? await store.claimCaptureReceipt(scopeKey, payloadHash)
+      : true;
+    const existing = await store.getCaptureReceipt(scopeKey);
+    if (!claimed && existing) {
+      const verdict = evaluateCaptureReceipt(existing, payloadHash);
+      if (verdict.kind === "duplicate" && verdict.receipt.accepted_ids.length > 0) {
+        return successEnvelope<ConversationAddData>(
+          {
+            accepted_ids: verdict.receipt.accepted_ids,
+            accepted_versions: verdict.receipt.accepted_ids.map(() => "v1"),
+            total_count: verdict.receipt.total_count,
+            duplicate: true,
+            capture_id,
+          } as ConversationAddData,
+          requestId,
+        );
+      }
+      if (verdict.kind === "conflict") {
+        return errorEnvelope(409, "capture_id conflict: payload does not match the original capture", requestId);
+      }
+    } else if (existing) {
+      const verdict = evaluateCaptureReceipt(existing, payloadHash);
+      if (verdict.kind === "duplicate" && verdict.receipt.accepted_ids.length > 0) {
+        return successEnvelope<ConversationAddData>(
+          {
+            accepted_ids: verdict.receipt.accepted_ids,
+            accepted_versions: verdict.receipt.accepted_ids.map(() => "v1"),
+            total_count: verdict.receipt.total_count,
+            duplicate: true,
+            capture_id,
+          } as ConversationAddData,
+          requestId,
+        );
+      }
+      if (verdict.kind === "conflict") {
+        return errorEnvelope(409, "capture_id conflict: payload does not match the original capture", requestId);
+      }
+    }
+  }
 
   // Quota check: memory limit
   if (deps.quotaManager) {
@@ -720,7 +787,10 @@ async function handleConversationAdd(body: unknown, auth: V2AuthContext, request
       try { emb = await embedding.embed(msg.content); } catch (e) { console.warn(`[v2-router] L0 embedding failed:`, e); }
     }
 
-    await store.upsertL0(record, emb);
+    const ok = await store.upsertL0(record, emb);
+    if (!ok) {
+      return errorEnvelope(500, "L0 persist failed; capture not receipted", requestId);
+    }
     acceptedIds.push(id);
   }
 
@@ -774,8 +844,30 @@ async function handleConversationAdd(body: unknown, auth: V2AuthContext, request
     deps.quotaManager.reportMemoryAdded(auth.serviceId, acceptedIds.length).catch(() => {});
   }
 
+  if (capture_id && store.putCaptureReceipt) {
+    try {
+      await store.putCaptureReceipt({
+        scope_key: scopeKey,
+        payload_hash: payloadHash,
+        accepted_ids: acceptedIds,
+        total_count: acceptedIds.length,
+        created_at: new Date().toISOString(),
+      });
+    } catch (err) {
+      deps.logger.warn(
+        `${TAG} putCaptureReceipt failed for ${capture_id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return errorEnvelope(503, "capture receipt persist failed after L0 write", requestId);
+    }
+  }
+
   return successEnvelope<ConversationAddData>(
-    { accepted_ids: acceptedIds, accepted_versions: acceptedIds.map(() => "v1"), total_count: acceptedIds.length },
+    {
+      accepted_ids: acceptedIds,
+      accepted_versions: acceptedIds.map(() => "v1"),
+      total_count: acceptedIds.length,
+      ...(capture_id ? { capture_id, duplicate: false } : {}),
+    } as ConversationAddData,
     requestId,
   );
 }

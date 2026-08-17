@@ -164,6 +164,7 @@ export class MemoryClient {
       ...this.iso.baseBody(),
       session_id: this.iso.resolveSessionForWrite(params.session_id),
       messages: params.messages,
+      capture_id: params.capture_id,
     }));
   }
 
@@ -235,6 +236,18 @@ export class MemoryClient {
       offset: params.offset,
       time_start: params.time_start,
       time_end: params.time_end,
+    }));
+  }
+
+  /**
+   * Team-bound one-shot recall (self + imported chat_memory resolved by Core).
+   * POST /v3/memory/recall
+   */
+  recallBundle(params: { query: string; max_items?: number }): Promise<Record<string, unknown>> {
+    return this.http.post(`${V3}/memory/recall`, stripUndefined({
+      ...this.iso.baseBody(),
+      query: params.query,
+      max_items: params.max_items,
     }));
   }
 

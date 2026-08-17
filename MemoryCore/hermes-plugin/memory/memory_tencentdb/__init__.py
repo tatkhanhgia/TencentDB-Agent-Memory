@@ -872,7 +872,8 @@ class MemoryTencentdbProvider(MemoryProvider):
                     user_id=self._user_id,
                 )
                 self._record_success()
-                items = result.get("data", {}).get("items", [])
+                payload = result.get("data") or {}
+                items = payload.get("messages") or payload.get("items") or []
                 if not items:
                     return "No conversations found for this query."
                 lines = []

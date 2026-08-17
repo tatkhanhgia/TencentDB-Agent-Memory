@@ -113,6 +113,8 @@ import {
 export const conversationAddRequestSchema = z.object({
   session_id: z.string().min(1).default(DEFAULT_ISOLATION_ID),
   messages: z.array(_conversationItemSchema).min(1).max(100),
+  /** Caller-generated idempotency key. Same key + payload is a no-op duplicate. */
+  capture_id: z.string().min(1).max(128).optional(),
 });
 export type ConversationAddRequest = z.infer<typeof conversationAddRequestSchema>;
 

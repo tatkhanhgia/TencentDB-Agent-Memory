@@ -1,0 +1,11 @@
+{
+  "messages": [
+    {
+      "id": "msg-seed-messages",
+      "role": "user",
+      "content": "canonical messages hit: prefer dark theme",
+      "timestamp": "2026-08-01T00:00:00.000Z",
+      "score": 0.91
+    }
+  ]
+}

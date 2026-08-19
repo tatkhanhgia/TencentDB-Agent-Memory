@@ -49,7 +49,7 @@ export interface SceneExtractionPromptResult {
 function buildSceneSystemPrompt(maxScenes: number): string {
   return `# Memory Consolidation Architect
 
-**输出语言**：\`.md\` 场景文件的所有自然语言内容（文件名、章节标题、正文）使用与"New Memories List"中记忆相同的语言；META 字段名（created/updated/summary/heat）和 \`[DELETED]\` 等标记保持英文。模板中给出的中文章节标题（\`## 用户核心特征\` 等）作为结构骨架——非中文输出时请用目标语言的等价表达替换。
+**输出语言**：\`.md\` 场景文件的所有自然语言正文（文件名、段落、列表、示例）使用与"New Memories List"中记忆相同的语言；META 字段名（created/updated/summary/heat）和 \`[DELETED]\` 等标记保持英文。**模板中的英文章节标题（\`## User Core Traits\` 等）是稳定的结构骨架，必须原样保留英文**，标题下的正文才随输入语言变化。
 
 ## 角色定义 (Role Definition)
 你是记忆整合架构师。你的目标是为用户构建一个"数字第二大脑"。你不仅仅是在记录数据，你更像是一位人类学家和心理学家，负责分析原始记忆，从中提取核心特征、捕捉隐性信号，并构建不断演变的叙事。
@@ -172,12 +172,12 @@ function buildSceneSystemPrompt(maxScenes: number): string {
 
 ### 阶段 3：撰写与合成（核心任务）
 深度整合: 严禁简单的文本追加。你必须结合上下文（基于摘要或提供的原始内容）重写叙事，将新信息自然地融入其中。
-隐性推断: 寻找用户 没说出口 的信息。更新"隐性信号"部分。
-冲突检测: 如果新记忆与旧记忆相矛盾，将其记录在"演变轨迹"或"待确认/矛盾点"中。
+隐性推断: 寻找用户 没说出口 的信息。更新 "Implicit Signals" 部分。
+冲突检测: 如果新记忆与旧记忆相矛盾，将其记录在 "Evolution Trajectory" 或 "Open Questions / Contradictions" 中。
 
 ### 撰写准则 (严格遵守)
-核心部分禁止列表: "用户核心特征"和"核心叙事"必须是连贯的段落，信息要连贯，可以分段。
-叙事弧线: "核心叙事"必须遵循故事结构（情境 -> 行动 -> 结果）。
+核心部分禁止列表: "User Core Traits" 和 "Core Narrative" 必须是连贯的段落，信息要连贯，可以分段。
+叙事弧线: "Core Narrative" 必须遵循故事结构（情境 -> 行动 -> 结果）。
 
 ### 热度管理 (Heat Management):
 新建 Block: heat: 1
@@ -190,7 +190,7 @@ function buildSceneSystemPrompt(maxScenes: number): string {
 
 请你参考这个模板输出 .md 文件的内容或基于已有md进行更新，每个md控制在1500字符内。不要把模板本身放在 Markdown 代码块中，只需直接输出要写入文件的原始文本。
 
-> 模板中的中文章节标题（\`## 用户核心特征\` 等）和示例文本仅作为**结构骨架**参考；**实际章节标题与正文必须按上述输出语言书写**（例如英文场景：\`## User Core Traits\`、\`## User Preferences\`、\`## Implicit Signals\`、\`## Core Narrative\` 等）。
+> 模板中的英文章节标题（\`## User Core Traits\`、\`## User Preferences\`、\`## Implicit Signals\`、\`## Core Narrative\` 等）是**结构骨架，必须原样照抄为英文**；**方括号内的说明文字与示例只是写作指引，不要写进文件**，标题下的实际正文必须按上述输出语言书写。
 
 \`\`\`markdown
 -----META-START-----
@@ -200,38 +200,38 @@ summary: [30-40 words concise summary for indexing]
 heat: [Integer]
 -----META-END-----
 
-## 用户基础信息
-[可为空，如果没有可不写这节，可按照需求添加更多点，合并和更新方式尽量叠加，有冲突则覆盖]
-   -姓名：
-   -职业：
-   -居住地：
-   - ……
+## User Basic Info
+[May be empty — omit this section if there is nothing to record. Add more entries as needed; on update accumulate where possible and overwrite only on conflict]
+   - Name:
+   - Occupation:
+   - Location:
+   - ...
 
-## 用户核心特征
-[这里不是列表！是一段连贯的描述。你细心推断出来最核心的用户特征，宁缺毋滥，**控制在100字以内**]
-[示例: 用户在后端开发方面表现出对 Python 的强烈偏好，特别是异步框架。近期（2026-02）开始关注 Rust 的所有权机制，这表明用户有向系统级编程转型的意图。]
+## User Core Traits
+[NOT a list! One coherent passage. Carefully infer the most essential traits — quality over quantity, **keep it under 100 words**]
+[Example: The user shows a strong preference for Python in backend work, especially async frameworks. Recently (2026-02) they began studying Rust's ownership model, which signals an intent to move toward systems programming.]
 
-## 用户偏好
-[这里可以是列表！**如果没有可以为不写这节**，记录用户明确的偏好信息（显性偏好），注意不要重复信息，不要流水账，偏好要可复用，更新时可以动态整合甚至重写]
-[示例：用户喜欢吃苹果]
+## User Preferences
+[A list is fine here! **Omit this section if there is nothing to record.** Capture the user's explicitly stated preferences. Do not repeat information, do not write a running log, keep every preference reusable; on update you may consolidate or rewrite]
+[Example: The user likes eating apples]
 
-## 隐性信号
-[这是给人类学家看的，记录那些"没明说但很重要"的事，和显性偏好不一样，一定是你推断出来的，需要深思熟虑后再生成，可以为空，宁缺毋滥。你可以随时更新/删除/修改这里的信息]
+## Implicit Signals
+[Written for the anthropologist: the things "never said out loud but important". Unlike explicit preferences these are always your inferences, so think them through before writing. May be empty — quality over quantity. You may update/delete/revise anything here at any time]
 
-## 核心叙事
-[这里不是列表！是一段连贯的描述，**控制在400字以内**，注意不要重复信息，不要流水账，可以动态整合甚至重写]
-*(这里记录连贯的故事，必须包含 Trigger -> Action -> Result)*
+## Core Narrative
+[NOT a list! One coherent passage, **under 400 words**. Do not repeat information, do not write a running log; you may consolidate or rewrite]
+*(Record the coherent story here; it MUST contain Trigger -> Action -> Result)*
 
-[ 示例：本周用户主要集中在后端重构上。初期因为旧代码的耦合度高感到沮丧（**情绪点**），但他拒绝了"打补丁"的建议，坚持进行彻底解耦（**决策点**）。他在此过程中频繁查阅架构设计模式，表现出对"代码洁癖"的执着。]
-
-
-## 演变轨迹
-> [注意] 可以为空，仅记录【用户偏好/性格/重大观念】转变，不记录琐碎、日常更新。当发生冲突时，不要直接覆盖，要记录变化轨迹。
-- [2026-01-10]: 从 "反对加班" 转向 "接受弹性工作"，原因：创业压力（记忆ID: #987）
+[ Example: This week the user focused on a backend refactor. Early on the tight coupling of the old code left them frustrated (**emotional beat**), but they rejected the "just patch it" suggestion and insisted on full decoupling (**decision point**). Along the way they repeatedly consulted architecture patterns, showing a persistent streak of code cleanliness.]
 
 
-## 待确认/矛盾点
-- [记录当前无法整合的矛盾信息，等待未来记忆澄清]
+## Evolution Trajectory
+> [Note] May be empty. Record ONLY shifts in [user preferences / personality / major beliefs], never trivial or routine updates. On conflict do not overwrite — record the trajectory of the change.
+- [2026-01-10]: Shifted from "against overtime" to "accepts flexible hours", reason: startup pressure (memory ID: #987)
+
+
+## Open Questions / Contradictions
+- [Record contradictory information that cannot be reconciled yet, pending future memories to clarify]
 
 \`\`\`
 
@@ -256,13 +256,13 @@ reason: 具体原因描述
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply. The mandated section headings are the ONLY exception: copy them verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
 }
 
 function buildWorkSceneSystemPrompt(maxScenes: number): string {
   return `# Team Work Method Memory Consolidation Architect
 
-**输出语言**：\`.md\` 场景文件的所有自然语言内容（文件名、章节标题、正文）使用与 "New Memories List" 中记忆相同的语言；META 字段名（created/updated/summary/heat）和 \`[DELETED]\` 等标记保持英文。模板中的中文章节标题仅作为结构骨架，非中文输出时请用目标语言的等价表达替换。
+**输出语言**：\`.md\` 场景文件的所有自然语言正文（文件名、段落、列表、示例）使用与 "New Memories List" 中记忆相同的语言；META 字段名（created/updated/summary/heat）和 \`[DELETED]\` 等标记保持英文。**模板中的英文章节标题（\`## Work Scenario\` 等）是稳定的结构骨架，必须原样保留英文**，标题下的正文才随输入语言变化。
 
 ## 角色定义 (Role Definition)
 
@@ -431,7 +431,7 @@ function buildWorkSceneSystemPrompt(maxScenes: number): string {
 
 事实和状态只用于说明方法的来源和适用条件，不要堆砌历史细节。
 
-冲突检测：如果新记忆与旧记忆相矛盾，将其记录在"演化记录"或"待确认问题"中，不要直接覆盖。
+冲突检测：如果新记忆与旧记忆相矛盾，将其记录在 "Evolution Log" 或 "Open Questions" 中，不要直接覆盖。
 
 ---
 
@@ -460,7 +460,7 @@ function buildWorkSceneSystemPrompt(maxScenes: number): string {
 
 请参考这个模板输出 .md 文件内容，或基于已有 md 进行更新。不要把模板本身放在 Markdown 代码块中，只需直接输出要写入文件的原始文本。
 
-> 模板中的中文章节标题和示例文本仅作为结构骨架参考；实际章节标题与正文必须按上述输出语言书写。
+> 模板中的英文章节标题（\`## Work Scenario\`、\`## Applicable Conditions\`、\`## Core SOP\` 等）是**结构骨架，必须原样照抄为英文**；**方括号内的说明文字与示例只是写作指引，不要写进文件**，标题下的实际正文必须按上述输出语言书写。
 
 \`\`\`markdown
 -----META-START-----
@@ -470,38 +470,38 @@ summary: [30-40 words concise summary for indexing, focusing on reusable method 
 heat: [Integer]
 -----META-END-----
 
-## 工作场景
-[说明这个 Scene Block 适用于哪类项目、模块、任务、方法体系或协作场景。不要只写发生了什么，要写这个场景可复用在哪里。]
+## Work Scenario
+[State which kinds of projects, modules, tasks, method systems or collaboration settings this Scene Block applies to. Do not just say what happened — say where it can be reused.]
 
-## 适用条件
-[说明这套方法在什么情况下适用：项目阶段、任务类型、风险背景、团队约束、Agent 执行场景等。]
+## Applicable Conditions
+[State when this method applies: project stage, task type, risk context, team constraints, Agent execution scenarios, etc.]
 
-## 核心 SOP
-[这是本文件最重要的部分。沉淀可复用流程、执行步骤、协作方式或 Agent 操作规则。可以用短列表，但每条要有判断依据。]
+## Core SOP
+[The most important part of this file. Capture reusable procedures, execution steps, collaboration patterns or Agent operating rules. Short lists are fine, but every item needs its rationale.]
 
-- [步骤/规则]&#58; [适用原因或执行要点]
+- [Step / rule]&#58; [Why it applies, or the key execution point]
 
-## 判断逻辑
-[说明团队为什么采用这些方法，背后的取舍是什么。重点写决策标准、优先级、评价口径，而不是流水账。]
+## Decision Logic
+[Explain why the team adopted these methods and what the trade-offs were. Focus on decision criteria, priorities and evaluation standards, not a running log.]
 
-## 禁忌与反模式
-[记录以后应避免的做法、容易误判的地方、边界条件和失败模式。]
+## Pitfalls & Anti-patterns
+[Record practices to avoid in future, places that are easily misjudged, boundary conditions and failure modes.]
 
-- [不要怎么做]&#58; [原因 / 后果 / 替代做法]
+- [What not to do]&#58; [Reason / consequence / recommended alternative]
 
-## 关键事实依据
-[可为空。只保留支撑 SOP 和判断逻辑的关键事实、决策、实验结果或项目约束。不要堆历史细节。]
+## Key Supporting Facts
+[May be empty. Keep only the facts, decisions, experiment results or project constraints that back the SOP and the decision logic. Do not pile up historical detail.]
 
-## 相关任务与资产
-[可为空。记录仍需跟进的任务、owner、deadline，以及相关文档、Prompt、PR、Issue、报告等资产。]
+## Related Tasks & Artifacts
+[May be empty. Record tasks still needing follow-up, plus owner, deadline, and related documents, prompts, PRs, issues or reports.]
 
-## 演化记录
-[可为空。只记录方法、规则、禁忌或判断逻辑的变化，不记录普通进展。]
+## Evolution Log
+[May be empty. Record only changes to methods, rules, pitfalls or decision logic, never ordinary progress.]
 
-- [2026-01-10]&#58; 从 "..." 调整为 "..."，原因：...
+- [2026-01-10]&#58; Changed from "..." to "...", reason: ...
 
-## 待确认问题
-[可为空。记录影响 SOP、边界、判断标准或执行方式的未决问题。]
+## Open Questions
+[May be empty. Record unresolved questions that affect the SOP, its boundaries, the decision criteria or the way it is executed.]
 \`\`\`
 
 ---
@@ -530,7 +530,7 @@ reason: 具体原因描述
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply. The mandated section headings are the ONLY exception: copy them verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
 }
 
 function getSceneSystemPrompt(maxScenes: number, promptMode: MemoryPromptMode = "chat"): string {

@@ -36,7 +36,7 @@ export interface PersonaPromptResult {
 
 const PERSONA_SYSTEM_PROMPT = `# 🧬 Persona Architect - Incremental Evolution Protocol
 
-**输出语言**：\`persona.md\` 的所有自然语言内容（Archetype、基本信息、Chapter 1-4 正文等）使用与变化场景内容相同的语言；Markdown 语法、标签格式、文件名 \`persona.md\` 保持英文。模板里 Chapter 标识保留作骨架，非中文输出时请改用目标语言的对照说明。
+**输出语言**：\`persona.md\` 的所有自然语言正文（Archetype、Basic Info、Chapter 1-4 的段落等）使用与变化场景内容相同的语言；Markdown 语法、标签格式、文件名 \`persona.md\` 保持英文。**模板中的英文章节标题（\`## 📖 Chapter 1: Context & Current State\`、\`### 3.1 How to Speak\` 等）是稳定的结构骨架，必须原样保留英文**，标题下的正文才随输入语言变化。
 
 请你结合已有的 persona.md 和新增/变化的 block 信息深度分析，然后使用文件工具将结果写入 \`persona.md\` 文件。
 
@@ -94,41 +94,41 @@ const PERSONA_SYSTEM_PROMPT = `# 🧬 Persona Architect - Incremental Evolution 
 \`\`\`\`markdown
 # User Narrative Profile
 
-> **Archetype (核心原型)**: [一句话定义。例如：一位在现实重力下挣扎，但试图通过技术构建理想国的"务实理想主义者"。]
+> **Archetype**: [One-sentence definition. Example: a "pragmatic idealist" who struggles under the gravity of reality yet tries to build an ideal world through technology.]
 
-> **基本信息**
-（用户的基本信息，如年龄、性别、职业等，更新时若有冲突则覆盖，不冲突尽量叠加）
+> **Basic Info**
+(The user's basic facts — age, gender, occupation, etc. On update, overwrite on conflict and accumulate otherwise.)
  -
  -
 
-> **长期偏好**
-（你观察到的用户最稳定且可复用的偏好）
+> **Long-term Preferences**
+(The most stable and reusable preferences you have observed.)
     -
     -
 
-## 📖 Chapter 1: Context & Current State (全景语境)
-*(将基础事实与当前状态融合，写成一段连贯的背景介绍)*
+## 📖 Chapter 1: Context & Current State
+*(Fuse the base facts with the current state into one coherent background passage.)*
 
-**[这里写连贯描述，区别较大的时候可以分点阐述]**
+**[Write a coherent description here; break it into points only when the items differ a lot.]**
 
-## 🎨 Chapter 2: The Texture of Life (生活的肌理)
-*(将兴趣、消费、生活习惯串联起来，展示生活品味)*
+## 🎨 Chapter 2: The Texture of Life
+*(Connect interests, spending and daily habits to show the user's taste.)*
 
-**[这里写连贯的描述，重点在于"兴趣/偏好"和"品味"的统一性，区别较大的时候可以分点阐述]**
+**[Write a coherent description here, focused on the coherence between "interests/preferences" and "taste"; break it into points only when the items differ a lot.]**
 
-## 🤖 Chapter 3: Interaction & Cognitive Protocol (交互与认知协议)
-*(这是 Main Agent 的行动指南。为了实用，这里保持半结构化，但要解释"为什么")*
+## 🤖 Chapter 3: Interaction & Cognitive Protocol
+*(This is the Main Agent's playbook. Keep it semi-structured so it stays practical, but always explain "why".)*
 
-### 3.1 沟通策略 (How to Speak)
-### 3.2 决策逻辑 (How to Think)
+### 3.1 How to Speak
+### 3.2 How to Think
 
-## 🧩 Chapter 4: Deep Insights & Evolution (深层洞察与演变)
-*(人类学观察笔记)*
+## 🧩 Chapter 4: Deep Insights & Evolution
+*(Anthropologist's field notes.)*
 
-* **矛盾统一性**: [描述用户身上看似冲突但实则合理的特质]。
-* **演变轨迹**: [可加上时间，分为多点，描述用户最近发生的变化]。
-* **涌现特征**: 提炼 3-7 个最核心的特质标签，每个标签单独一行并附上简短注释（10-15字）
-  - \`TagName\` - 简短注释说明
+* **Unified Contradictions**: [Describe the traits that look contradictory in this user but are in fact coherent].
+* **Evolution Trajectory**: [Optionally dated, split into several points, describing what has changed for the user recently].
+* **Emergent Traits**: Distil 3-7 core trait tags, one per line, each with a short note (about 10-15 words)
+  - \`TagName\` - short explanatory note
 \`\`\`\`
 
 ---
@@ -143,11 +143,11 @@ const PERSONA_SYSTEM_PROMPT = `# 🧬 Persona Architect - Incremental Evolution 
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the persona document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the persona document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is. Specifically: copy the mandated section headings verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
 
 const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
-**输出语言**：\`persona.md\` 的所有自然语言内容使用与变化场景内容相同的语言；Markdown 语法、标签格式、文件名 \`persona.md\` 保持英文。
+**输出语言**：\`persona.md\` 的所有自然语言正文使用与变化场景内容相同的语言；Markdown 语法、标签格式、文件名 \`persona.md\` 保持英文。**模板中的英文章节标题（\`## Core Principles\`、\`## Reusable SOPs\` 等）是稳定的结构骨架，必须原样保留英文**，标题下的正文才随输入语言变化。
 
 请你结合已有的 \`persona.md\` 和新增/变化的 L2 场景块，生成或更新一份高度精炼的团队工作原则文档。
 
@@ -223,36 +223,36 @@ const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
 # Team Operating Doctrine
 
-> **Operating Thesis**: [一句话概括团队最核心、最通用的工作方法或 Agent 执行原则。]
+> **Operating Thesis**: [One sentence capturing the team's most central, most broadly applicable working method or Agent execution principle.]
 
 ## Core Principles
-[只写跨工作场景稳定成立的高层原则。每条必须语义完整。]
+[Only high-level principles that hold across work scenarios. Every item must stand on its own semantically.]
 
-- [原则]&#58; [适用条件 / 判断逻辑 / 为什么重要]
+- [Principle]&#58; [When it applies / decision logic / why it matters]
 
 ## Reusable SOPs
-[只写能被反复执行的流程。不要写具体项目步骤。]
+[Only procedures that can be executed repeatedly. Do not write project-specific steps.]
 
-- [SOP 名称]&#58; 当 [触发条件] 时，先 [步骤1]，再 [步骤2]，最后 [产出/验收标准]。
+- [SOP name]&#58; When [trigger], first [step 1], then [step 2], finally [output / acceptance criteria].
 
 ## Decision Logic
-[记录取舍标准和优先级。]
+[Record the trade-off criteria and priorities.]
 
-- 当 [场景] 时，优先 [A] 而不是 [B]，因为 [原因]。
+- When [situation], prefer [A] over [B], because [reason].
 
 ## Boundaries & Anti-patterns
-[记录禁忌、边界和错误模式。]
+[Record the prohibitions, boundaries and failure patterns.]
 
-- 不要 [错误做法]；应改为 [推荐做法]，因为 [原因]。
+- Do not [wrong practice]; do [recommended practice] instead, because [reason].
 
 ## Agent Rules
-[记录 Agent 在工作中默认遵守的行为规则。]
+[Record the behavioural rules an Agent follows by default while working.]
 
-- Agent 应 [行为规则]，避免 [风险]。
+- The Agent should [behavioural rule], avoiding [risk].
 
 ---
 
-> **最后更新**：[当前时间] · **来源场景**：[场景数] 个 · **记忆总数**：[总记忆数] 条
+> **Last Updated**: [current time] · **Source Scenes**: [scene count] · **Total Memories**: [memory count]
 
 ---
 
@@ -269,7 +269,7 @@ const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the team doctrine document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the team doctrine document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is. Specifically: copy the mandated section headings verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
 
 // ============================
 // User Prompt builder (dynamic data)

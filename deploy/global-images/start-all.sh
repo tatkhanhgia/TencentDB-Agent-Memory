@@ -32,10 +32,22 @@ info "═══ Step 1/3: memory ═══════════════�
 info "═══ Step 2/3: memory-hub ═══════════════════════════════════"
 "$SCRIPT_DIR/start-memory-hub.sh"
 
-info "═══ Step 3/3: proxy ════════════════════════════════════════"
+info "═══ Step 3/4: proxy ════════════════════════════════════════"
 # 默认打开完整流水线（auth + sessionInit + tdai 注入）。
 # 用户可用 PROXY_FULL_STACK=0 关闭；也可在 .env 分别覆盖三个开关。
 PROXY_FULL_STACK="${PROXY_FULL_STACK:-1}" "$SCRIPT_DIR/start-proxy.sh"
+
+info "═══ Step 4/4: memory-mcp (Streamable HTTP) ═════════════════"
+# MCP 是可选组件（MCP_HTTP=0 跳过）；失败只 warn，不影响三件套。
+if [[ "${MCP_HTTP:-1}" == "1" ]]; then
+  if [[ -f "$SCRIPT_DIR/.mcp.env" ]]; then
+    "$SCRIPT_DIR/start-memory-mcp.sh" || warn "memory-mcp 启动失败（不影响 core/hub/proxy），详见 .memory-mcp.log"
+  else
+    warn "跳过 memory-mcp：.mcp.env 不存在（cp .mcp.env.example .mcp.env 后重跑 ./start-memory-mcp.sh）"
+  fi
+else
+  info "跳过 memory-mcp（MCP_HTTP=0）"
+fi
 
 ok "═══ 全部服务已就绪 ═════════════════════════════════════════"
 print_endpoints

@@ -191,6 +191,37 @@ gateway_endpoint）就把 `MEMORY_HUB_PROXY_PUBLIC_URL` 显式设为空字符串
 
 `proxy` 默认关闭 `auth` / `sessionInit` / `costGuard`（这些依赖内部服务），只做纯转发 + `tdai-memory` 上下文注入（injector 名称，非容器名）。要开启完整流水线，需要另行配置 —— 参见 `context_proxy/config.example.yaml`。
 
+## MCP 接入（任意 harness：Claude Code / Cursor / Windsurf / OpenCode / Codex …）
+
+读路径走 MemoryMCP（4 个只读工具），写路径走 session 结束钩子（见下节），互不干扰。
+
+```bash
+# 1) 准备 identity（单一事实来源，gitignored）
+cp .mcp.env.example .mcp.env   # 填 TDAI_TEAM_ID / TDAI_AGENT_ID / TDAI_USER_ID
+                               # TDAI_API_KEY 留空则自动回落 .admin-key
+
+# 2) 启动 Streamable HTTP MCP（首跑自动生成 TDAI_MCP_TOKEN 写回 .mcp.env）
+./start-memory-mcp.sh          # → http://127.0.0.1:8425/mcp
+./start-memory-mcp.sh --status # 健康检查
+```
+
+harness 侧二选一：
+
+- **HTTP（推荐）**：URL `http://127.0.0.1:8425/mcp` + `Authorization: Bearer $TDAI_MCP_TOKEN`。
+  token 在服务端映射到 team/agent/user，Core API key 不下发到客户端。
+- **stdio 兜底**：`command` 指向本目录 `tdai-memory-mcp.sh`（env 由 wrapper 自己加载，
+  harness 配置里不需要 env 块）。
+
+各 harness 配置样例与 agent 规则片段：`MemoryMCP/examples/`（含 `examples/rules/`）。
+`start-all.sh` 会在第 4 步自动带起 MCP（`MCP_HTTP=0` 跳过）；`stop-all.sh` 同步停掉。
+
+## 记忆写入：session 结束反思（tdai-reflect）
+
+写记忆不靠模型主动调工具，而是 harness 的 session 结束钩子触发
+`MemoryMCP/bin/tdai-reflect.mjs`：解析 transcript → LLM 判断是否有值得沉淀的
+ADR/系统级决策/长期偏好（**多数 session 结论为空，属正常**）→ 与既有记忆去重 →
+幂等写入 L0。Claude Code 的 SessionEnd 接法见 `hooks/README.md`。
+
 ## 常见问题
 
 **Q: `./start-all.sh` 卡在 wait_healthy？**

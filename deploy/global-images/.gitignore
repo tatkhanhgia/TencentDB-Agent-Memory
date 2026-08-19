@@ -1,0 +1,10 @@
+.env
+.admin-key
+.claude-code.env
+.proxy-config/
+.memory-core-config/
+.local-llm/
+.mcp.env
+.memory-mcp.pid
+.memory-mcp.log
+.reflect.log

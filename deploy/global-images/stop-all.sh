@@ -22,6 +22,9 @@ fi
 MEMORY_CORE_VOLUME="${MEMORY_CORE_VOLUME:-tdai-memory-core-data}"
 PANEL_VOLUME="${PANEL_VOLUME:-tdai-panel-data}"
 
+# 先停宿主机上的 memory-mcp（HTTP MCP 进程）
+"$SCRIPT_DIR/stop-memory-mcp.sh" || warn "stop-memory-mcp 失败（继续停容器）"
+
 for c in tdai-proxy tdai-memory-hub tdai-memory-core; do
   if $DOCKER ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$c"; then
     info "停止并移除 $c"

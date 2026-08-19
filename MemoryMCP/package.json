@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./dist/main.js",
   "bin": {
-    "tdai-memory-mcp": "./bin/tdai-memory-mcp.mjs"
+    "tdai-memory-mcp": "./bin/tdai-memory-mcp.mjs",
+    "tdai-reflect": "./bin/tdai-reflect.mjs"
   },
   "scripts": {
     "build": "tsc",

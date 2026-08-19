@@ -1,0 +1,1 @@
+Paste `CLAUDE.md.snippet` into the project `CLAUDE.md` (Claude Code), `cursor.mdc` into `.cursor/rules/` (Cursor, `alwaysApply: true`), `windsurfrules.snippet` into `.windsurfrules` (Windsurf), and `AGENTS.md.snippet` into `AGENTS.md` (Codex and OpenCode). These snippets teach the agent to read memory; they do not grant a write path.

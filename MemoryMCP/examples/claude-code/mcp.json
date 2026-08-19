@@ -1,15 +1,10 @@
 {
   "mcpServers": {
     "tdai-memory": {
-      "command": "tdai-memory-mcp",
-      "env": {
-        "TDAI_ENDPOINT": "http://127.0.0.1:8420",
-        "TDAI_API_KEY": "${TDAI_API_KEY}",
-        "TDAI_SERVICE_ID": "default",
-        "TDAI_TEAM_ID": "${TDAI_TEAM_ID}",
-        "TDAI_AGENT_ID": "${TDAI_AGENT_ID}",
-        "TDAI_USER_ID": "${TDAI_USER_ID}",
-        "TDAI_TASK_ID": "${TDAI_TASK_ID}"
+      "type": "http",
+      "url": "http://127.0.0.1:8425/mcp",
+      "headers": {
+        "Authorization": "Bearer tok-local-dev"
       }
     }
   }

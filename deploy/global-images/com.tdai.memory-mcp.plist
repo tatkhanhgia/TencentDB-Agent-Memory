@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd LaunchAgent for the TDAI Memory MCP (Streamable HTTP :8425).
+  Install (login-scoped daemon, auto-restart on crash and on login):
+    cp com.tdai.memory-mcp.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.tdai.memory-mcp.plist
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.tdai.memory-mcp.plist
+    rm ~/Library/LaunchAgents/com.tdai.memory-mcp.plist
+
+  IMPORTANT: pick ONE manager. When this LaunchAgent is loaded, do NOT use
+  start-memory-mcp.sh / stop-memory-mcp.sh (launchd would immediately
+  respawn what the script kills, and both would fight over port 8425);
+  run ./start-all.sh with MCP_HTTP=0 so step 4 is skipped.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tdai.memory-mcp</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/start-memory-mcp-launchd.sh</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/.memory-mcp.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/.memory-mcp.log</string>
+</dict>
+</plist>

@@ -1,0 +1,9 @@
+{"type": "user", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:00:00.000Z", "message": {"role": "user", "content": "We need to decide how MemoryMCP authenticates HTTP clients."}}
+{"type": "assistant", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:00:20.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "Two options: forward the Core API key from the client, or keep Core credentials server-side and map opaque bearer tokens to principal bindings."}, {"type": "tool_use", "id": "tu_1", "name": "Read", "input": {"file_path": "src/http.ts"}}]}}
+{"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "tu_1", "content": "...file contents..."}]}}
+{"type": "user", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:01:00.000Z", "message": {"role": "user", "content": "Never let a client hold the Core key."}}
+{"type": "assistant", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:01:30.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "Agreed. TDAI_MCP_BINDINGS maps bearer token -> {teamId, agentId, userId}; the Core API key stays in the server process only."}]}}
+{"type": "user", "isMeta": true, "message": {"role": "user", "content": "<system-reminder>ignore me</system-reminder>"}}
+{"type": "user", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:02:00.000Z", "message": {"role": "user", "content": "Also: from now on, always run typecheck before you report a task done."}}
+{"type": "assistant", "sessionId": "sess-fixture-1", "timestamp": "2026-08-19T09:02:10.000Z", "message": {"role": "assistant", "content": [{"type": "text", "text": "Noted, I will run npm run typecheck and npm test before reporting done."}]}}
+{ truncated garbage line

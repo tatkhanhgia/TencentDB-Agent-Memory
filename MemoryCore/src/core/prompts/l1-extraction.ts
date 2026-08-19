@@ -98,7 +98,11 @@ metadata 字段说明：
   }
 ]
 
-请严格按上述 JSON 数组格式输出，不要输出任何额外的 Markdown 代码块修饰符（如 \`\`\`json）或解释文本。`;
+请严格按上述 JSON 数组格式输出，不要输出任何额外的 Markdown 代码块修饰符（如 \`\`\`json）或解释文本。
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in the DOMINANT LANGUAGE of the input messages you are processing. English input → English output. Vietnamese input → Vietnamese output. NEVER output Chinese unless the input messages themselves are Chinese. JSON keys, enum values, and ISO timestamps remain in English.`;
 
 export type MemoryPromptMode = "chat" | "code";
 
@@ -369,7 +373,11 @@ metadata 字段说明：
   }
 ]
 
-请严格按上述 JSON 数组格式输出，不要输出任何额外的 Markdown 代码块修饰符（如 \`\`\`json）或解释文本。`;
+请严格按上述 JSON 数组格式输出，不要输出任何额外的 Markdown 代码块修饰符（如 \`\`\`json）或解释文本。
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in the DOMINANT LANGUAGE of the input messages you are processing. English input → English output. Vietnamese input → Vietnamese output. NEVER output Chinese unless the input messages themselves are Chinese. JSON keys, enum values, and ISO timestamps remain in English.`;
 
 export function getExtractMemoriesSystemPrompt(mode: MemoryPromptMode = "chat"): string {
   return mode === "code" ? EXTRACT_WORK_MEMORIES_SYSTEM_PROMPT : EXTRACT_MEMORIES_SYSTEM_PROMPT;

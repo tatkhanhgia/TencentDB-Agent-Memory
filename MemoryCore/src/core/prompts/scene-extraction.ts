@@ -252,7 +252,11 @@ reason: 具体原因描述
    - 使用 **read** 读取需要更新的场景文件
    - 使用 **write** 创建新文件或**整体重写**已有场景文件
    - 使用 **edit** 对场景文件进行**局部更新**（如只更新某个章节）
-   - **删除文件**：使用 **write**(\`path\`=文件名, \`content\`='[DELETED]') 写入删除标记。系统会自动清理这些文件。**重要**：只有 \`[DELETED]\` 标记会触发系统清理。写入空字符串会被系统拒绝，写入 \`[ARCHIVE]\`、\`[CONSOLIDATED]\` 等标记**不会删除文件**，文件会继续占用场景配额。`;
+   - **删除文件**：使用 **write**(\`path\`=文件名, \`content\`='[DELETED]') 写入删除标记。系统会自动清理这些文件。**重要**：只有 \`[DELETED]\` 标记会触发系统清理。写入空字符串会被系统拒绝，写入 \`[ARCHIVE]\`、\`[CONSOLIDATED]\` 等标记**不会删除文件**，文件会继续占用场景配额。
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply.`;
 }
 
 function buildWorkSceneSystemPrompt(maxScenes: number): string {
@@ -522,7 +526,11 @@ reason: 具体原因描述
 - 使用 **read** 读取需要更新的场景文件。
 - 使用 **write** 创建新文件或整体重写已有场景文件。
 - 使用 **edit** 对场景文件进行局部更新。
-- **删除文件**：使用 **write**(\`path\`=文件名, \`content\`='[DELETED]') 写入删除标记。系统会自动清理这些文件。**重要**：只有 \`[DELETED]\` 标记会触发系统清理。写入空字符串会被系统拒绝，写入 \`[ARCHIVE]\`、\`[CONSOLIDATED]\` 等标记不会删除文件。`;
+- **删除文件**：使用 **write**(\`path\`=文件名, \`content\`='[DELETED]') 写入删除标记。系统会自动清理这些文件。**重要**：只有 \`[DELETED]\` 标记会触发系统清理。写入空字符串会被系统拒绝，写入 \`[ARCHIVE]\`、\`[CONSOLIDATED]\` 等标记不会删除文件。
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply.`;
 }
 
 function getSceneSystemPrompt(maxScenes: number, promptMode: MemoryPromptMode = "chat"): string {

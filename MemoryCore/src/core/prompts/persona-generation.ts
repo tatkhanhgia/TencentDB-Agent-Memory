@@ -139,7 +139,11 @@ const PERSONA_SYSTEM_PROMPT = `# 🧬 Persona Architect - Incremental Evolution 
 - ✅ 内容到 Chapter 4 结束（不包含场景导航，工程会自动追加）
 - ✅ 必须严格按照上面的模板格式
 - ✅ 不要添加场景导航（工程会自动追加）
-- ✅ 只操作 persona.md，不要操作其他文件`;
+- ✅ 只操作 persona.md，不要操作其他文件
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the persona document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is.`;
 
 const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
@@ -261,7 +265,11 @@ const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 - ✅ 求精不求多，能不写就不写，能合并就合并
 - ✅ 不写项目进度、任务流水账、版本碎片或场景索引
 - ✅ 不要添加场景导航（工程会自动追加 Scene Navigation 和场景索引）
-- ✅ 只操作 \`persona.md\``;
+- ✅ 只操作 \`persona.md\`
+
+---
+
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the team doctrine document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is.`;
 
 // ============================
 // User Prompt builder (dynamic data)

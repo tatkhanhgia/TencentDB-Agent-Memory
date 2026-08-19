@@ -105,7 +105,7 @@ export const TOOLS: ToolDef[] = [
       properties: {
         path: {
           type: "string",
-          description: "Relative scene path (e.g. scene_blocks/auth.md).",
+          description: "Relative scene path (e.g. auth.md). A scene_blocks/ prefix, as shown in the persona scene index, is accepted and stripped.",
         },
         max_chars: {
           type: "integer",

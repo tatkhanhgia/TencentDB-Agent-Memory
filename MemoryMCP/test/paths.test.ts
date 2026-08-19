@@ -3,7 +3,15 @@ import { PathError, validateScenePath } from "../src/paths.js";
 
 describe("validateScenePath", () => {
   it("accepts a relative scene path", () => {
-    expect(validateScenePath("scene_blocks/auth.md")).toBe("scene_blocks/auth.md");
+    expect(validateScenePath("auth.md")).toBe("auth.md");
+    expect(validateScenePath("nested/auth.md")).toBe("nested/auth.md");
+  });
+
+  it("strips the scene_blocks/ storage prefix from persona scene-index paths", () => {
+    expect(validateScenePath("scene_blocks/auth.md")).toBe("auth.md");
+    expect(validateScenePath("scene_blocks\\auth.md")).toBe("auth.md");
+    // only the leading storage prefix is stripped, not inner segments
+    expect(validateScenePath("foo/scene_blocks/auth.md")).toBe("foo/scene_blocks/auth.md");
   });
 
   it("rejects traversal and absolute paths", () => {

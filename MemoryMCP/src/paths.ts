@@ -6,8 +6,14 @@ export class PathError extends Error {
 }
 
 /**
- * Scene paths are relative Core scenario keys (e.g. scene_blocks/auth.md).
+ * Scene paths are relative Core scenario keys (e.g. auth.md).
  * Reject traversal, absolute paths, and control characters.
+ *
+ * Core's scenario API addresses scenes by bare filename, but the scene
+ * index that engineering appends to persona.md (scene-navigation.ts)
+ * renders paths with a `scene_blocks/` storage prefix for other consumers
+ * (read/tdai_read_cos). Accept and strip that prefix so agents can pass
+ * either form.
  */
 export function validateScenePath(raw: unknown): string {
   if (typeof raw !== "string" || raw.trim() === "") {
@@ -29,5 +35,8 @@ export function validateScenePath(raw: unknown): string {
       throw new PathError("path must not contain '.' or '..' segments");
     }
   }
-  return path.replace(/\\/g, "/");
+  const normalized = path.replace(/\\/g, "/");
+  return normalized.startsWith("scene_blocks/")
+    ? normalized.slice("scene_blocks/".length)
+    : normalized;
 }

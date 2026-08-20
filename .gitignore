@@ -121,3 +121,6 @@ data/tdai-memory.db
 # Test coverage output
 coverage/
 **/coverage/
+
+# Local harness MCP config (contains the live device token)
+/opencode.json

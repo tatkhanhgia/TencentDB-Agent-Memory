@@ -56,6 +56,32 @@ export function parseOptionalType(raw: unknown): string | undefined {
   return raw.trim();
 }
 
+/**
+ * Skill search scope. "agent" (default) keeps the gateway's owner filter —
+ * only the active identity's own skills. "team" asks the gateway to strip
+ * agent_id and search the whole team library.
+ */
+export function parseSkillScope(raw: unknown): "agent" | "team" {
+  if (raw === undefined || raw === null || raw === "") return "agent";
+  if (raw === "agent" || raw === "team") return raw;
+  throw new LimitError('scope must be "agent" or "team"');
+}
+
+export function parseSkillVersion(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n < 1) {
+    throw new LimitError("version must be a positive integer");
+  }
+  return n;
+}
+
+export function parseSkillEncoding(raw: unknown): "utf-8" | "base64" | undefined {
+  if (raw === undefined || raw === null || raw === "") return undefined;
+  if (raw === "utf-8" || raw === "base64") return raw;
+  throw new LimitError('encoding must be "utf-8" or "base64"');
+}
+
 export function truncateText(text: string, budget: number): { text: string; truncated: boolean } {
   if (text.length <= budget) return { text, truncated: false };
   return { text: text.slice(0, Math.max(0, budget)), truncated: true };

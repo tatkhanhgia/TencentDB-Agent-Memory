@@ -29,13 +29,17 @@ describe("tool schemas", () => {
     expect(listToolDescriptors({ captureEnabled: true }).map((t) => t.name)).toContain(
       "tdai_memory_capture",
     );
-    expect(listToolDescriptors({ skillsEnabled: true }).map((t) => t.name)).toContain(
-      "tdai_skill_search",
+    expect(listToolDescriptors({ skillsEnabled: true }).map((t) => t.name)).toEqual(
+      expect.arrayContaining([
+        "tdai_skill_search",
+        "tdai_skill_get",
+        "tdai_skill_file_read",
+      ]),
     );
   });
 
   it("rejects additional properties on every tool", () => {
-    for (const tool of TOOLS) {
+    for (const tool of [...TOOLS, CAPTURE_TOOL, ...SKILL_TOOLS]) {
       expect(tool.inputSchema.additionalProperties).toBe(false);
     }
   });

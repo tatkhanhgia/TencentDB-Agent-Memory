@@ -40,8 +40,11 @@ function port(partial: Partial<MemoryReadPort>): MemoryReadPort {
     recallBundle: partial.recallBundle,
     searchSkills: partial.searchSkills,
     getSkill: partial.getSkill,
+    readSkillFile: partial.readSkillFile,
   };
 }
+
+const skillConfig: IdentityConfig = { ...config, skillsEnabled: true };
 
 describe("handleToolCall", () => {
   it("marks partial self-scope when recallBundle fails", async () => {
@@ -194,5 +197,102 @@ describe("handleToolCall", () => {
     );
     expect(result.isError).toBe(true);
     expect(String(result.structured.message)).toMatch(/path/i);
+  });
+
+  it("keeps skill search agent-scoped by default and widens only on scope=team", async () => {
+    const seen: Array<string | undefined> = [];
+    const memory = port({
+      searchSkills: async (req) => {
+        seen.push(req.scope);
+        return { items: [] };
+      },
+    });
+
+    const scoped = await handleToolCall(
+      "tdai_skill_search",
+      { query: "release checklist" },
+      { config: skillConfig, memory },
+    );
+    expect(scoped.isError).toBe(false);
+    expect(scoped.structured.skill_scope).toBe("agent");
+
+    const team = await handleToolCall(
+      "tdai_skill_search",
+      { query: "release checklist", scope: "team" },
+      { config: skillConfig, memory },
+    );
+    expect(team.isError).toBe(false);
+    expect(team.structured.skill_scope).toBe("team");
+
+    // "agent" must not travel — the gateway enum only accepts "team".
+    expect(seen).toEqual([undefined, "team"]);
+  });
+
+  it("rejects an unknown skill search scope", async () => {
+    const result = await handleToolCall(
+      "tdai_skill_search",
+      { query: "anything", scope: "global" },
+      { config: skillConfig, memory: port({ searchSkills: async () => ({ items: [] }) }) },
+    );
+    expect(result.isError).toBe(true);
+    expect(String(result.structured.message)).toMatch(/scope/i);
+  });
+
+  it("reads a skill resource file and truncates to the char budget", async () => {
+    const result = await handleToolCall(
+      "tdai_skill_file_read",
+      { skill_id: "skl-abc", path: "scripts/run.sh", max_chars: 256 },
+      {
+        config: skillConfig,
+        memory: port({
+          readSkillFile: async (req) => ({
+            path: req.path,
+            content: "#!/bin/sh\n" + "echo hi\n".repeat(100),
+            encoding: "utf-8",
+            size_bytes: 810,
+            mime_type: "text/x-shellscript",
+            version: 3,
+          }),
+        }),
+      },
+    );
+    expect(result.isError).toBe(false);
+    expect(result.structured.path).toBe("scripts/run.sh");
+    expect(result.structured.version).toBe(3);
+    expect(String(result.structured.content)).toHaveLength(256);
+    expect(String(result.structured.content).startsWith("#!/bin/sh")).toBe(true);
+    expect(result.structured.truncated).toBe(true);
+    // size_bytes reports the real file size even though content was cut.
+    expect(result.structured.size_bytes).toBe(810);
+  });
+
+  it("rejects skill resource path traversal before calling Core", async () => {
+    let called = false;
+    const result = await handleToolCall(
+      "tdai_skill_file_read",
+      { skill_id: "skl-abc", path: "../../etc/passwd" },
+      {
+        config: skillConfig,
+        memory: port({
+          readSkillFile: async () => {
+            called = true;
+            return {};
+          },
+        }),
+      },
+    );
+    expect(result.isError).toBe(true);
+    expect(called).toBe(false);
+    expect(String(result.structured.message)).toMatch(/path/i);
+  });
+
+  it("refuses skill tools when TDAI_ENABLE_SKILLS is off", async () => {
+    const result = await handleToolCall(
+      "tdai_skill_file_read",
+      { skill_id: "skl-abc", path: "scripts/run.sh" },
+      { config, memory: port({ readSkillFile: async () => ({ content: "x" }) }) },
+    );
+    expect(result.isError).toBe(true);
+    expect(result.structured.error).toBe("skills_disabled");
   });
 });

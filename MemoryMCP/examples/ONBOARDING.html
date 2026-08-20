@@ -80,6 +80,7 @@
   (2) thêm rules dạy agent gọi <code>tdai_memory_context</code> đầu session,
   (3) (tuỳ chọn, chỉ Claude Code) gắn hook SessionEnd để tự đúc bài học khi đóng session.
   Memory là <strong>read-only qua MCP</strong> — agent không bao giờ tự ghi.
+  Muốn dùng thêm <strong>Skill</strong> (SOP tái sử dụng) thì xem mục 5 — bật cờ <em>và</em> dạy agent đi tìm, thiếu vế nào cũng không đủ.
 </div>
 
 <h2 id="architecture">1. Architecture in 30 seconds</h2>
@@ -207,7 +208,36 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
     Reads follow the session's picker choice; writes follow this resolution. The <code>.reflect.log</code> line shows which route was used (<code>route=file|folder-name:…|default</code>).</li>
 </ul>
 
-<h2 id="identity">5. The identity model (what the picker is about)</h2>
+<h2 id="skills">5. Step 4 (optional) — Skills</h2>
+<p>Skills are a <strong>different asset from memory</strong>: reusable SOPs the team already proved out — a release checklist, a debugging routine, a setup procedure — each with versions, resource files, trigger boundaries, and validation rules. Memory tells the agent <em>what the team knows</em>; a Skill tells it <em>how the team does this</em>.</p>
+<p>Off by default. Two edits turn it on:</p>
+<pre><code># deploy/global-images/.mcp.env
+TDAI_ENABLE_SKILLS=true
+
+# then restart (idempotent)
+./start-memory-mcp.sh</code></pre>
+<p>Three read-only tools appear. Writes stay in the Panel and MemoryProxy — nothing here can create or modify a Skill.</p>
+<table>
+  <tr><th>Tool</th><th>What it does</th></tr>
+  <tr><td><code>tdai_skill_search</code></td><td>Keyword search. Defaults to the active identity's own Skills; <code>scope: "team"</code> drops the owner filter and searches the whole team library.</td></tr>
+  <tr><td><code>tdai_skill_get</code></td><td>Full SKILL.md plus a manifest of the files attached to it.</td></tr>
+  <tr><td><code>tdai_skill_file_read</code></td><td>One file from that manifest, e.g. <code>scripts/run.sh</code>.</td></tr>
+</table>
+<div class="card warn-box">
+  <p><strong>The flag alone is not enough.</strong> Two things about the MCP path routinely surprise people:</p>
+  <ul>
+    <li><strong>Nothing auto-injects Skills.</strong> MemoryProxy pushes an <code>&lt;available_skills&gt;</code> catalogue into every system prompt; MCP is pull-only. The agent finds a Skill only if it decides to search — so it needs to be told to look.</li>
+    <li><strong>Nothing executes a Skill.</strong> It is a procedure the agent carries out with its own tools, not a program that runs itself.</li>
+  </ul>
+</div>
+<p>So pair the flag with guidance, the same way Step 2 pairs the transport with rules:</p>
+<ul>
+  <li><strong>Claude Code</strong> — <code>cd deploy/global-images &amp;&amp; ./install-claude-skill.sh</code> installs <code>MemoryMCP/skills/tdai-memory/SKILL.md</code> into <code>~/.claude/skills/</code>. It carries the full workflow (search agent scope → retry <code>scope: "team"</code> → <code>get</code> → read manifest files) and loads on demand, so it costs nothing until relevant. Restart Claude Code afterwards.</li>
+  <li><strong>Every other harness</strong> — the Skills paragraph already included in <code>examples/rules/</code>. That format is Claude-Code-only, so for Cursor / Windsurf / Codex / OpenCode the rules file is the <em>only</em> guidance they get.</li>
+</ul>
+<p class="muted">Skip both and the agent still has the tools — it just has to infer from the tool descriptions when to reach for them.</p>
+
+<h2 id="identity">6. The identity model (what the picker is about)</h2>
 <p>Every memory record is isolated by <strong>team / user / agent</strong>. There is no "project" dimension — <strong>one project = one agent</strong>. A session reads exactly one agent's store, chosen once:</p>
 <ol>
   <li>Token maps to <em>one</em> identity (or declares <code>"default"</code>) → binds silently. Done.</li>
@@ -222,7 +252,7 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <li>Static-list bindings only: run <code>sync-memory-identities.sh</code> (optionally <code>--prune</code>) to pull the registry into the pinned list.</li>
 </ol>
 
-<h2 id="tools">6. Tool reference</h2>
+<h2 id="tools">7. Tool reference</h2>
 <table>
   <tr><th>Tool</th><th>What it does</th><th>When the agent should call it</th></tr>
   <tr><td><code>tdai_memory_context</code></td><td>One-shot recall bundle: persona + scene index + top matching atoms.</td><td>Once at session start, before non-trivial work.</td></tr>
@@ -231,9 +261,12 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <tr><td><code>tdai_scene_read</code></td><td>Read one L2 scene file by path. Accepts the <code>scene_blocks/</code>-prefixed paths shown in the persona scene index.</td><td>To read the full SOP behind a scene-index entry.</td></tr>
   <tr><td><code>tdai_identity_list</code> <span class="muted">*</span></td><td>List identities this session may act as, and which is active.</td><td rowspan="2">Only after an <code>identity_not_selected</code> error. <span class="muted">* Present only on multi-identity tokens.</span></td></tr>
   <tr><td><code>tdai_identity_use</code> <span class="muted">*</span></td><td>Bind the session to one identity by name.</td></tr>
+  <tr><td><code>tdai_skill_search</code> <span class="muted">†</span></td><td>Find a reusable SOP by keyword. Agent scope by default, <code>scope: "team"</code> for the whole library.</td><td rowspan="3">Before starting anything routine or repeatable, instead of re-deriving the procedure. <span class="muted">† Only when <code>TDAI_ENABLE_SKILLS=true</code> — see section 5.</span></td></tr>
+  <tr><td><code>tdai_skill_get</code> <span class="muted">†</span></td><td>Full SKILL.md + manifest of attached files.</td></tr>
+  <tr><td><code>tdai_skill_file_read</code> <span class="muted">†</span></td><td>One resource file from that manifest.</td></tr>
 </table>
 
-<h2 id="troubleshoot">7. Troubleshooting</h2>
+<h2 id="troubleshoot">8. Troubleshooting</h2>
 <table>
   <tr><th>Symptom</th><th>Cause → fix</th></tr>
   <tr><td>Connection refused on <code>:8425</code></td><td>Server not running → <code>cd deploy/global-images &amp;&amp; ./start-memory-mcp.sh</code> (also part of <code>start-all.sh</code>). Health check: <code>./start-memory-mcp.sh --status</code>.</td></tr>
@@ -241,6 +274,9 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <tr><td><code>identity_not_selected</code> error</td><td>Normal on multi-identity tokens without a default — pick via the dialog, or call <code>tdai_identity_use</code>. Not a failure.</td></tr>
   <tr><td>Session not found / re-initialize</td><td>The MCP server restarted (sessions are in-memory, 60-min idle expiry) → the client reconnects automatically on the next call.</td></tr>
   <tr><td>Hook ran but no lessons appear</td><td>Check <code>.reflect.log</code>. "skipped" = session too short or nothing durable (normal). LLM timeout = LM Studio not running/slow — the hook allows 240s by default.</td></tr>
+  <tr><td>Skill tools missing / <code>skills_disabled</code></td><td><code>TDAI_ENABLE_SKILLS</code> still <code>false</code>, or the server was not restarted after the edit → fix <code>.mcp.env</code>, re-run <code>./start-memory-mcp.sh</code>.</td></tr>
+  <tr><td>Skill tools present but the agent never uses them</td><td>Expected — MCP does not auto-inject Skills. Install the Claude Code skill (<code>./install-claude-skill.sh</code>) or paste the Skills paragraph from <code>examples/rules/</code> into the harness's rules file.</td></tr>
+  <tr><td><code>tdai_skill_search</code> returns nothing you can see in the Panel</td><td>Default scope is the active identity's <em>own</em> Skills → retry with <code>scope: "team"</code>. Note the search is BM25 keyword matching, so use words that appear in the Skill's name or description.</td></tr>
   <tr><td>stdio server exits immediately</td><td>Missing env → the wrapper needs <code>.mcp.env</code> filled in and MemoryCore running (it falls back to <code>.admin-key</code> for the API key).</td></tr>
 </table>
 

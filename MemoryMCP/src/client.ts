@@ -33,8 +33,14 @@ export interface MemoryReadPort {
   readScenario(path: string): Promise<unknown>;
   readCore(): Promise<unknown>;
   addConversation?(req: ConversationAddInput): Promise<unknown>;
-  searchSkills?(req: { query: string; limit: number }): Promise<unknown>;
-  getSkill?(req: { skill_id: string }): Promise<unknown>;
+  searchSkills?(req: { query: string; limit: number; scope?: "team" }): Promise<unknown>;
+  getSkill?(req: { skill_id: string; version?: number }): Promise<unknown>;
+  readSkillFile?(req: {
+    skill_id: string;
+    path: string;
+    version?: number;
+    encoding?: "utf-8" | "base64";
+  }): Promise<unknown>;
   recallBundle?(req: { query: string; max_items: number }): Promise<unknown>;
 }
 
@@ -88,9 +94,23 @@ export function createSdkMemoryPort(cfg: IdentityConfig): MemoryReadPort {
         messages: req.messages,
       });
     },
+    // `scope: "team"` makes the gateway strip agent_id before searching, so
+    // the whole team library is in range instead of only this agent's own
+    // skills. Omitted (the default) keeps the agent-scoped owner filter.
     searchSkills: skills
-      ? (req) => skills.search({ query: req.query, top_k: req.limit })
+      ? (req) => skills.search({ query: req.query, top_k: req.limit, scope: req.scope })
       : undefined,
-    getSkill: skills ? (req) => skills.get({ skill_id: req.skill_id }) : undefined,
+    getSkill: skills
+      ? (req) => skills.get({ skill_id: req.skill_id, version: req.version })
+      : undefined,
+    readSkillFile: skills
+      ? (req) =>
+          skills.readFile({
+            skill_id: req.skill_id,
+            path: req.path,
+            version: req.version,
+            encoding: req.encoding,
+          })
+      : undefined,
   };
 }

@@ -16,6 +16,24 @@ export class PathError extends Error {
  * either form.
  */
 export function validateScenePath(raw: unknown): string {
+  const normalized = validateRelativePath(raw);
+  return normalized.startsWith("scene_blocks/")
+    ? normalized.slice("scene_blocks/".length)
+    : normalized;
+}
+
+/**
+ * Skill resource paths are relative keys inside one skill's storage dir
+ * (e.g. scripts/run.sh), exactly as listed in the manifest returned by
+ * tdai_skill_get. Core validates them again server-side (INVALID_PATH);
+ * this is the local guard so a traversal attempt never leaves the process.
+ */
+export function validateSkillResourcePath(raw: unknown): string {
+  return validateRelativePath(raw);
+}
+
+/** Shared rules: non-empty, ≤512 chars, no control chars, relative, no '.'/'..'. */
+function validateRelativePath(raw: unknown): string {
   if (typeof raw !== "string" || raw.trim() === "") {
     throw new PathError("path must be a non-empty string");
   }
@@ -35,8 +53,5 @@ export function validateScenePath(raw: unknown): string {
       throw new PathError("path must not contain '.' or '..' segments");
     }
   }
-  const normalized = path.replace(/\\/g, "/");
-  return normalized.startsWith("scene_blocks/")
-    ? normalized.slice("scene_blocks/".length)
-    : normalized;
+  return path.replace(/\\/g, "/");
 }

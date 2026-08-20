@@ -24,6 +24,7 @@
     "dist/",
     "bin/",
     "examples/",
+    "skills/",
     "README.md"
   ],
   "license": "MIT",

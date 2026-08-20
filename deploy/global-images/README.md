@@ -215,6 +215,23 @@ harness 侧二选一：
 各 harness 配置样例与 agent 规则片段：`MemoryMCP/examples/`（含 `examples/rules/`）。
 `start-all.sh` 会在第 4 步自动带起 MCP（`MCP_HTTP=0` 跳过）；`stop-all.sh` 同步停掉。
 
+### Skill 工具（可选）
+
+Skill 是"跑通过的 SOP"，与 memory 是两类资产。默认关闭，开启需要**两件事**，缺一不可：
+
+```bash
+# 1) 开工具：.mcp.env 里设 TDAI_ENABLE_SKILLS=true，然后重启（幂等）
+./start-memory-mcp.sh
+
+# 2) 教 agent 什么时候去找 —— MCP 不会自动注入 skill 目录
+./install-claude-skill.sh      # Claude Code：装 SKILL.md 进 ~/.claude/skills/
+                               # 其它 harness：粘 examples/rules/ 里的 Skill 段落
+```
+
+只做第 1 步的话工具在、但模型只能靠 tool description 自己领悟要不要用。
+与 proxy 的区别：proxy 每个 session 主动注入 `<available_skills>` 目录，MCP 这条路是
+纯拉取 —— 模型不主动搜就永远不知道有什么。三个工具都是只读，写路径仍在 Panel / proxy。
+
 ## 记忆写入：session 结束反思（tdai-reflect）
 
 写记忆不靠模型主动调工具，而是 harness 的 session 结束钩子触发

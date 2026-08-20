@@ -9,6 +9,7 @@ export const OPTIONAL_TOOL_NAMES = [
   "tdai_memory_capture",
   "tdai_skill_search",
   "tdai_skill_get",
+  "tdai_skill_file_read",
 ] as const;
 
 export const IDENTITY_TOOL_NAMES = [
@@ -154,7 +155,8 @@ export const CAPTURE_TOOL: ToolDef = {
 export const SKILL_TOOLS: ToolDef[] = [
   {
     name: "tdai_skill_search",
-    description: "Search team Skills (read-only) in the frozen identity scope.",
+    description:
+      "Search Skills (read-only) — reusable SOPs distilled from past work. Defaults to Skills owned by the active identity; pass scope=\"team\" to search every Skill shared with the team, across agents.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -162,18 +164,63 @@ export const SKILL_TOOLS: ToolDef[] = [
       properties: {
         query: QUERY_PROP,
         limit: LIMIT_PROP,
+        scope: {
+          type: "string",
+          enum: ["agent", "team"],
+          description:
+            "\"agent\" (default) searches Skills owned by the active identity. \"team\" drops the owner filter and searches the whole team library — use it when the agent-scoped search returns nothing.",
+        },
       },
     },
   },
   {
     name: "tdai_skill_get",
-    description: "Read one Skill by id (read-only).",
+    description:
+      "Read one Skill by id (read-only). Returns the full SKILL.md plus a manifest of its attached resource files; read those with tdai_skill_file_read.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
       required: ["skill_id"],
       properties: {
         skill_id: { type: "string", description: "Skill id returned by tdai_skill_search." },
+        version: {
+          type: "integer",
+          minimum: 1,
+          description: "Optional historical version. Omit for the current head.",
+        },
+      },
+    },
+  },
+  {
+    name: "tdai_skill_file_read",
+    description:
+      "Read one resource file attached to a Skill (read-only), e.g. the scripts/run.sh listed in the manifest returned by tdai_skill_get.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["skill_id", "path"],
+      properties: {
+        skill_id: { type: "string", description: "Skill id that owns the file." },
+        path: {
+          type: "string",
+          description: "Relative resource path exactly as listed in the Skill manifest (e.g. scripts/run.sh).",
+        },
+        version: {
+          type: "integer",
+          minimum: 1,
+          description: "Optional Skill version. Omit for the current head.",
+        },
+        encoding: {
+          type: "string",
+          enum: ["utf-8", "base64"],
+          description: "utf-8 (default) for text files; base64 for binaries.",
+        },
+        max_chars: {
+          type: "integer",
+          minimum: 256,
+          maximum: 100000,
+          description: "Character budget for the returned content.",
+        },
       },
     },
   },

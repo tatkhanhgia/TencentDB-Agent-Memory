@@ -6,6 +6,9 @@ import {
   parseOptionalTime,
   parseOptionalType,
   parseQuery,
+  parseSkillEncoding,
+  parseSkillScope,
+  parseSkillVersion,
   truncateText,
 } from "./limits.js";
 import {
@@ -15,7 +18,7 @@ import {
   normalizeSceneFile,
   normalizeSceneList,
 } from "./normalize.js";
-import { validateScenePath } from "./paths.js";
+import { validateScenePath, validateSkillResourcePath } from "./paths.js";
 import { stripTdaiWrappers, validateCaptureId, validateConversationRef } from "./sanitize.js";
 import { namespaceConversationRef } from "./session-key.js";
 import { OPTIONAL_TOOL_NAMES, TOOL_NAMES, type ToolName } from "./tools.js";
@@ -277,8 +280,15 @@ export async function handleTdaiSkillSearch(
   }
   const query = parseQuery(args.query);
   const limit = parseMaxItems(args.limit);
-  const raw = await ctx.memory.searchSkills({ query, limit });
-  const structured = { scope: "self" as const, query, result: raw };
+  const skillScope = parseSkillScope(args.scope);
+  const raw = await ctx.memory.searchSkills({
+    query,
+    limit,
+    // Only "team" travels — "agent" is the gateway default and sending it
+    // would fail the enum on the wire.
+    scope: skillScope === "team" ? "team" : undefined,
+  });
+  const structured = { scope: "self" as const, skill_scope: skillScope, query, result: raw };
   return { structured, text: jsonText(structured), isError: false };
 }
 
@@ -292,8 +302,50 @@ export async function handleTdaiSkillGet(
   if (typeof args.skill_id !== "string" || !args.skill_id.trim()) {
     return errorResult("invalid_skill", "skill_id is required");
   }
-  const raw = await ctx.memory.getSkill({ skill_id: args.skill_id.trim() });
+  const raw = await ctx.memory.getSkill({
+    skill_id: args.skill_id.trim(),
+    version: parseSkillVersion(args.version),
+  });
   const structured = { scope: "self" as const, result: raw };
+  return { structured, text: jsonText(structured), isError: false };
+}
+
+export async function handleTdaiSkillFileRead(
+  args: Record<string, unknown>,
+  ctx: HandlerContext,
+): Promise<ToolResult> {
+  if (!ctx.config.skillsEnabled || !ctx.memory.readSkillFile) {
+    return errorResult(
+      "skills_disabled",
+      "tdai_skill_file_read is disabled (set TDAI_ENABLE_SKILLS=true)",
+    );
+  }
+  if (typeof args.skill_id !== "string" || !args.skill_id.trim()) {
+    return errorResult("invalid_skill", "skill_id is required");
+  }
+  const path = validateSkillResourcePath(args.path);
+  const encoding = parseSkillEncoding(args.encoding);
+  const maxChars = parseMaxChars(args.max_chars, ctx.config.maxChars);
+  const raw = await ctx.memory.readSkillFile({
+    skill_id: args.skill_id.trim(),
+    path,
+    version: parseSkillVersion(args.version),
+    encoding,
+  });
+  const file = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const content = typeof file.content === "string" ? file.content : "";
+  const cut = truncateText(content, maxChars);
+  const structured = {
+    scope: "self" as const,
+    skill_id: args.skill_id.trim(),
+    path: typeof file.path === "string" ? file.path : path,
+    version: typeof file.version === "number" ? file.version : undefined,
+    encoding: typeof file.encoding === "string" ? file.encoding : encoding ?? "utf-8",
+    size_bytes: typeof file.size_bytes === "number" ? file.size_bytes : undefined,
+    mime_type: typeof file.mime_type === "string" ? file.mime_type : undefined,
+    content: cut.text,
+    truncated: cut.truncated,
+  };
   return { structured, text: jsonText(structured), isError: false };
 }
 
@@ -343,6 +395,8 @@ export async function handleToolCall(
         return await handleTdaiSkillSearch(body, ctx);
       case "tdai_skill_get":
         return await handleTdaiSkillGet(body, ctx);
+      case "tdai_skill_file_read":
+        return await handleTdaiSkillFileRead(body, ctx);
       default:
         // Identity tools are session-scoped and handled in server.ts.
         return errorResult("unknown_tool", `Unknown tool: ${name}`);

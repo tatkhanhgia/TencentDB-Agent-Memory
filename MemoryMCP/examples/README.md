@@ -2,7 +2,7 @@
 
 **New here? Start with [ONBOARDING.html](ONBOARDING.html)** — the full 3-step guide (transport config per harness, identity model, write-path hook, troubleshooting), readable in a browser and by agents.
 
-Two transports, same four tools (`tdai_memory_context`, `tdai_memory_search`, `tdai_conversation_search`, `tdai_scene_read`):
+Two transports, same four read tools (`tdai_memory_context`, `tdai_memory_search`, `tdai_conversation_search`, `tdai_scene_read`), plus three optional Skill tools — see [Skills](#skills-optional) below:
 
 - **HTTP (preferred)** — `http://127.0.0.1:8425/mcp` with `Authorization: Bearer tok-local-dev` (replace with the real device token from `deploy/global-images/.mcp.bindings.json`, also printed by `start-memory-mcp.sh`).
 - **Stdio fallback** — `command` is the wrapper `/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh`. The wrapper sources env internally; do **not** add an env block.
@@ -10,6 +10,28 @@ Two transports, same four tools (`tdai_memory_context`, `tdai_memory_search`, `t
 JSON files in each harness directory are the HTTP variant (valid JSON, no comments). Stdio is documented in that directory's `README.md`. Codex is stdio-only (`config.toml`).
 
 Agent-facing “read memory, do not write” snippets: [`rules/`](rules/).
+
+## Skills (optional)
+
+Skills are reusable SOPs distilled from past work — a different asset from memory, gated behind `TDAI_ENABLE_SKILLS=true` in `.mcp.env` (restart the server after changing it). Three read-only tools appear once enabled:
+
+| Tool | Purpose |
+| --- | --- |
+| `tdai_skill_search` | Keyword search. Defaults to the active identity's own Skills; `scope: "team"` searches the whole team library. |
+| `tdai_skill_get` | Full SKILL.md + manifest of attached resource files. |
+| `tdai_skill_file_read` | One file from that manifest, e.g. `scripts/run.sh`. |
+
+Two things that surprise people:
+
+- **Nothing auto-injects Skills.** Unlike MemoryProxy — which pushes an `<available_skills>` catalogue into every system prompt — the MCP path is pull-only. The agent finds a Skill only if it decides to search, which is what the rules snippet and the Claude Code skill are for.
+- **Nothing executes a Skill.** It is a procedure to carry out with the harness's own tools, not a program.
+
+Enabling the flag is therefore step one of two. Step two is telling the agent to look:
+
+- **Claude Code** — `deploy/global-images/install-claude-skill.sh` installs `MemoryMCP/skills/tdai-memory/SKILL.md` into `~/.claude/skills/`, loaded on demand.
+- **Every other harness** — the Skills paragraph in [`rules/`](rules/), pasted into that harness's rules file.
+
+Skip both and the agent still has the tools; it just has to infer from the tool descriptions when to reach for them.
 
 ## Device token & identities
 

@@ -17,7 +17,15 @@ Identity is frozen from the environment at process start. Tool arguments cannot 
 
 Optional write (P1): set `TDAI_ENABLE_CAPTURE=true` to advertise `tdai_memory_capture`. Default is read-only. Capture is one incremental turn + `capture_id` (idempotent on Core) + `conversation_ref`.
 
-Optional Skills (P2): set `TDAI_ENABLE_SKILLS=true` for `tdai_skill_search` / `tdai_skill_get`. Policy text: `skills/tdai-memory/SKILL.md`.
+Optional Skills (P2): set `TDAI_ENABLE_SKILLS=true` for `tdai_skill_search` / `tdai_skill_get` / `tdai_skill_file_read`. Policy text: `skills/tdai-memory/SKILL.md`.
+
+| Name | Purpose |
+| --- | --- |
+| `tdai_skill_search` | Keyword search. Defaults to the active identity's own Skills; `scope: "team"` drops the owner filter and searches the whole team library. |
+| `tdai_skill_get` | Full SKILL.md + resource manifest for one skill (optionally a historical `version`). |
+| `tdai_skill_file_read` | One resource file from the manifest, e.g. `scripts/run.sh`. Content is truncated to `max_chars` (`size_bytes` still reports the real size). |
+
+Skill tools are read-only — no create/update/delete here. Writes stay in the Panel and MemoryProxy.
 
 `tdai_memory_context` calls Core `POST /v3/memory/recall` when available so imported/fixed chat_memory (same team, Core ACL) is included with source attribution (`scope: "bound"`).
 

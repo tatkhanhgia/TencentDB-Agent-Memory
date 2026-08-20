@@ -102,7 +102,7 @@ metadata 字段说明：
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in the DOMINANT LANGUAGE of the input messages you are processing. English input → English output. Vietnamese input → Vietnamese output. NEVER output Chinese unless the input messages themselves are Chinese. JSON keys, enum values, and ISO timestamps remain in English.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in ENGLISH, ALWAYS, regardless of the language of the input messages. Translate non-English input into English before writing it. NEVER output Chinese or any other language. JSON keys, enum values, and ISO timestamps remain in English.`;
 
 export type MemoryPromptMode = "chat" | "code";
 
@@ -377,7 +377,7 @@ metadata 字段说明：
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in the DOMINANT LANGUAGE of the input messages you are processing. English input → English output. Vietnamese input → Vietnamese output. NEVER output Chinese unless the input messages themselves are Chinese. JSON keys, enum values, and ISO timestamps remain in English.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL free-text output — scene names and memory content — in ENGLISH, ALWAYS, regardless of the language of the input messages. Translate non-English input into English before writing it. NEVER output Chinese or any other language. JSON keys, enum values, and ISO timestamps remain in English.`;
 
 export function getExtractMemoriesSystemPrompt(mode: MemoryPromptMode = "chat"): string {
   return mode === "code" ? EXTRACT_WORK_MEMORIES_SYSTEM_PROMPT : EXTRACT_MEMORIES_SYSTEM_PROMPT;

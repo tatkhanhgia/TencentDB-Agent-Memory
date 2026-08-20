@@ -71,7 +71,7 @@ export const CONFLICT_DETECTION_SYSTEM_PROMPT = `你是记忆冲突检测器。�
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write merged/updated memory content in the DOMINANT LANGUAGE of the memories being processed. English memories → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the memories themselves are Chinese. JSON keys and enum values remain in English.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write merged/updated memory content in ENGLISH, ALWAYS, regardless of the language of the source memories. Translate non-English content into English when merging. NEVER output Chinese or any other language. JSON keys and enum values remain in English.`;
 
 export const WORK_CONFLICT_DETECTION_SYSTEM_PROMPT = `你是团队工作记忆冲突检测器。批量比较多条【新记忆】与【统一候选记忆池】中的已有记忆，逐条决定如何处理。
 
@@ -139,7 +139,7 @@ export const WORK_CONFLICT_DETECTION_SYSTEM_PROMPT = `你是团队工作记忆�
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write merged/updated memory content in the DOMINANT LANGUAGE of the memories being processed. English memories → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the memories themselves are Chinese. JSON keys and enum values remain in English.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write merged/updated memory content in ENGLISH, ALWAYS, regardless of the language of the source memories. Translate non-English content into English when merging. NEVER output Chinese or any other language. JSON keys and enum values remain in English.`;
 
 export function getConflictDetectionSystemPrompt(mode: MemoryPromptMode = "chat"): string {
   return mode === "code" ? WORK_CONFLICT_DETECTION_SYSTEM_PROMPT : CONFLICT_DETECTION_SYSTEM_PROMPT;

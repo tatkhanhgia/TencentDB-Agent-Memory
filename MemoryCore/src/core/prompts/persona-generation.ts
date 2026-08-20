@@ -143,7 +143,7 @@ const PERSONA_SYSTEM_PROMPT = `# 🧬 Persona Architect - Incremental Evolution 
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the persona document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is. Specifically: copy the mandated section headings verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the persona document ENTIRELY in ENGLISH, regardless of the language of the source scenes/memories. Translate non-English source content into English. NEVER output Chinese or any other language. Copy the mandated section headings verbatim in English exactly as the template above spells them.`;
 
 const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
@@ -269,7 +269,7 @@ const TEAM_MEMORY_SYSTEM_PROMPT = `# Team Operating Doctrine Architect
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the team doctrine document in the DOMINANT LANGUAGE of the source scenes/memories. English sources → English document. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. Template section headings may stay as-is. Specifically: copy the mandated section headings verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write the team doctrine document ENTIRELY in ENGLISH, regardless of the language of the source scenes/memories. Translate non-English source content into English. NEVER output Chinese or any other language. Copy the mandated section headings verbatim in English exactly as the template above spells them.`;
 
 // ============================
 // User Prompt builder (dynamic data)

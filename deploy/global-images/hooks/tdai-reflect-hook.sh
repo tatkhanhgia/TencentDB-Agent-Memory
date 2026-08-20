@@ -55,6 +55,10 @@ if [[ -z "${TDAI_REFLECT_LLM_BASE_URL:-}" && -f "$DEPLOY_DIR/.env" ]]; then
   export TDAI_REFLECT_LLM_MODEL="${MEMORY_LLM_MODEL:-}"
 fi
 
+# Local models (LM Studio) can take well over the 60s default on long
+# transcripts; a timed-out extraction silently loses the session's lessons.
+export TDAI_REFLECT_TIMEOUT_MS="${TDAI_REFLECT_TIMEOUT_MS:-240000}"
+
 ARGS=(--transcript "$TRANSCRIPT" --format claude-code)
 [[ -n "$SESSION_ID" ]] && ARGS+=(--session-id "$SESSION_ID")
 

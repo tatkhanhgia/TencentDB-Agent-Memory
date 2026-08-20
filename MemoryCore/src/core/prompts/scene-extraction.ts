@@ -256,7 +256,7 @@ reason: 具体原因描述
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply. The mandated section headings are the ONLY exception: copy them verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in ENGLISH, ALWAYS, regardless of the language of the source memories/messages. Translate non-English source content into English. NEVER output Chinese or any other language. File-name constraints above still apply. Copy the mandated section headings verbatim in English exactly as the template above spells them.`;
 }
 
 function buildWorkSceneSystemPrompt(maxScenes: number): string {
@@ -530,7 +530,7 @@ reason: 具体原因描述
 
 ---
 
-**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in the DOMINANT LANGUAGE of the source memories/messages. English sources → English output. Vietnamese → Vietnamese. NEVER output Chinese unless the sources themselves are Chinese. File-name constraints above still apply. The mandated section headings are the ONLY exception: copy them verbatim in English exactly as the template above spells them, and write every heading's prose, list and example in the input-dominant language.`;
+**CRITICAL OUTPUT LANGUAGE RULE (this overrides any earlier wording):** Write ALL scene file content and scene names in ENGLISH, ALWAYS, regardless of the language of the source memories/messages. Translate non-English source content into English. NEVER output Chinese or any other language. File-name constraints above still apply. Copy the mandated section headings verbatim in English exactly as the template above spells them.`;
 }
 
 function getSceneSystemPrompt(maxScenes: number, promptMode: MemoryPromptMode = "chat"): string {

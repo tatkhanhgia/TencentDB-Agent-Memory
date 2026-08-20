@@ -1,0 +1,21 @@
+{
+  "_comment": "Optional extra MCP bindings, merged by start-memory-mcp.sh on top of the default token from .mcp.env. Copy to .mcp.bindings.json (gitignored — tokens are secrets). Two shapes per token: legacy single identity {teamId, agentId, userId[, taskId]} binds silently; multi-identity {identities: [...], default?} lets one 'device token' act as several agents — with no default, the first tool call asks the user to pick (MCP elicitation, falling back to the tdai_identity_use tool).",
+  "tok-example-device-token": {
+    "identities": [
+      {
+        "name": "coder",
+        "description": "Main coding memory",
+        "teamId": "team-xxxxxxxx",
+        "agentId": "agt-xxxxxxxx",
+        "userId": "usr-xxxxxxxx"
+      },
+      {
+        "name": "project-x",
+        "description": "Project X memory",
+        "teamId": "team-xxxxxxxx",
+        "agentId": "agt-yyyyyyyy",
+        "userId": "usr-xxxxxxxx"
+      }
+    ]
+  }
+}

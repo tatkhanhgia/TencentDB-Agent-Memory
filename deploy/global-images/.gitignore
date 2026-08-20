@@ -5,6 +5,7 @@
 .memory-core-config/
 .local-llm/
 .mcp.env
+.mcp.bindings.json
 .memory-mcp.pid
 .memory-mcp.log
 .reflect.log

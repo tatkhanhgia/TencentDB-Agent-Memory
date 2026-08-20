@@ -343,6 +343,9 @@ export async function handleToolCall(
         return await handleTdaiSkillSearch(body, ctx);
       case "tdai_skill_get":
         return await handleTdaiSkillGet(body, ctx);
+      default:
+        // Identity tools are session-scoped and handled in server.ts.
+        return errorResult("unknown_tool", `Unknown tool: ${name}`);
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

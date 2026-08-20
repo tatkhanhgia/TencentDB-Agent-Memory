@@ -11,7 +11,15 @@ export const OPTIONAL_TOOL_NAMES = [
   "tdai_skill_get",
 ] as const;
 
-export type ToolName = (typeof TOOL_NAMES)[number] | (typeof OPTIONAL_TOOL_NAMES)[number];
+export const IDENTITY_TOOL_NAMES = [
+  "tdai_identity_list",
+  "tdai_identity_use",
+] as const;
+
+export type ToolName =
+  | (typeof TOOL_NAMES)[number]
+  | (typeof OPTIONAL_TOOL_NAMES)[number]
+  | (typeof IDENTITY_TOOL_NAMES)[number];
 
 export interface ToolDef {
   name: ToolName;
@@ -171,10 +179,45 @@ export const SKILL_TOOLS: ToolDef[] = [
   },
 ];
 
-export function listToolDescriptors(opts: { captureEnabled?: boolean; skillsEnabled?: boolean } = {}) {
+export const IDENTITY_TOOLS: ToolDef[] = [
+  {
+    name: "tdai_identity_list",
+    description:
+      "List the memory identities this MCP session may act as, and which one is active. Only present when the session token maps to multiple identities.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: [],
+      properties: {},
+    },
+  },
+  {
+    name: "tdai_identity_use",
+    description:
+      "Bind this session to one memory identity by name (from tdai_identity_list). All memory tools then read that identity's store. If unsure which identity the user wants, ask them before choosing.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["name"],
+      properties: {
+        name: {
+          type: "string",
+          minLength: 1,
+          maxLength: 128,
+          description: "Identity name exactly as returned by tdai_identity_list.",
+        },
+      },
+    },
+  },
+];
+
+export function listToolDescriptors(
+  opts: { captureEnabled?: boolean; skillsEnabled?: boolean; identityEnabled?: boolean } = {},
+) {
   const extra: ToolDef[] = [];
   if (opts.captureEnabled) extra.push(CAPTURE_TOOL);
   if (opts.skillsEnabled) extra.push(...SKILL_TOOLS);
+  if (opts.identityEnabled) extra.push(...IDENTITY_TOOLS);
   return [...TOOLS, ...extra].map((t) => ({
     name: t.name,
     description: t.description,

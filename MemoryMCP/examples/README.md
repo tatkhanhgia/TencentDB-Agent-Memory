@@ -9,6 +9,15 @@ JSON files in each harness directory are the HTTP variant (valid JSON, no commen
 
 Agent-facing “read memory, do not write” snippets: [`rules/`](rules/).
 
+## Multi-identity device token (optional)
+
+Instead of one token per agent/project, a single **device token** can map to several memory identities (one per agent/project). Declare them in `deploy/global-images/.mcp.bindings.json` (see `.mcp.bindings.json.example`); `start-memory-mcp.sh` merges the file into the server bindings on start. Then every harness uses the same one-time config with that token, and adding a new agent never touches harness configs again.
+
+Per session, the active identity is chosen once:
+
+- **Single identity or `default` declared** — binds silently, nothing to do.
+- **Multiple identities, no default** — the first memory tool call asks the user to pick via MCP **elicitation** (a native picker in harnesses that support it). Harnesses without elicitation get an `identity_not_selected` error listing the identities, plus two extra tools: `tdai_identity_list` and `tdai_identity_use {"name": "…"}` for the agent to bind (it should ask the user which one when unclear). Switching mid-session with `tdai_identity_use` is always allowed.
+
 | Harness | HTTP | Stdio | Config on disk |
 | --- | --- | --- | --- |
 | Claude Code | preferred (`type: http`) | wrapper `command` | project `.mcp.json` — see [`claude-code/`](claude-code/) |

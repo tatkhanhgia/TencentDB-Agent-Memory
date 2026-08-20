@@ -1,10 +1,16 @@
+import { randomUUID } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import type { IdentityConfig } from "./config.js";
 import { createSdkMemoryPort } from "./client.js";
 import type { Logger } from "./logger.js";
 import { createMemoryMcpServer } from "./server.js";
-import { configForBinding, extractBearer, parseBindingsJson, type PrincipalBinding } from "./bindings.js";
+import {
+  configForIdentity,
+  extractBearer,
+  parseBindingsJson,
+  type PrincipalBinding,
+} from "./bindings.js";
 
 export interface HttpOptions {
   config: IdentityConfig;
@@ -15,6 +21,17 @@ export interface HttpOptions {
   allowedOrigins: string[];
 }
 
+/** Cap concurrent sessions and reap ones idle beyond the TTL. */
+const MAX_SESSIONS = 200;
+const SESSION_IDLE_TTL_MS = 60 * 60 * 1000;
+const SESSION_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
+
+interface HttpSession {
+  transport: StreamableHTTPServerTransport;
+  token: string;
+  lastSeen: number;
+}
+
 function originAllowed(origin: string | undefined, allowed: string[]): boolean {
   if (!origin) return true;
   if (allowed.includes("*")) return true;
@@ -22,12 +39,56 @@ function originAllowed(origin: string | undefined, allowed: string[]): boolean {
 }
 
 /**
- * Streamable HTTP MCP. Auth token is an MCP principal mapped server-side
- * to team/agent/user. Core API key stays on the server and is never forwarded.
+ * Streamable HTTP MCP with stateful sessions. Auth token is an MCP principal
+ * mapped server-side to one or more identities; the active identity is chosen
+ * per session (elicitation or tdai_identity_use). Core API key stays on the
+ * server and is never forwarded.
  */
 export function startHttpServer(opts: HttpOptions): Promise<{ close: () => Promise<void> }> {
   if (opts.bindings.size === 0) {
     throw new Error("TDAI_MCP_HTTP_PORT set but TDAI_MCP_BINDINGS is empty");
+  }
+
+  const sessions = new Map<string, HttpSession>();
+
+  const sweep = setInterval(() => {
+    const cutoff = Date.now() - SESSION_IDLE_TTL_MS;
+    for (const [sid, session] of sessions) {
+      if (session.lastSeen < cutoff) {
+        sessions.delete(sid);
+        session.transport.close().catch(() => {});
+        opts.log.info(`session ${sid} expired (idle)`);
+      }
+    }
+  }, SESSION_SWEEP_INTERVAL_MS);
+  sweep.unref();
+
+  async function createSession(token: string, binding: PrincipalBinding): Promise<StreamableHTTPServerTransport> {
+    const mcp = createMemoryMcpServer({
+      config: opts.config,
+      log: opts.log,
+      selection: {
+        binding,
+        makeConfig: (identity) => configForIdentity(opts.config, identity),
+        makeMemory: (cfg) => createSdkMemoryPort(cfg),
+      },
+    });
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (sid) => {
+        sessions.set(sid, { transport, token, lastSeen: Date.now() });
+        opts.log.info(`session ${sid} initialized (${binding.identities.length} identities)`);
+      },
+      onsessionclosed: (sid) => {
+        sessions.delete(sid);
+      },
+    });
+    transport.onclose = () => {
+      const sid = transport.sessionId;
+      if (sid) sessions.delete(sid);
+    };
+    await mcp.connect(transport);
+    return transport;
   }
 
   const httpServer = createServer(async (req: IncomingMessage, res: ServerResponse) => {
@@ -64,15 +125,39 @@ export function startHttpServer(opts: HttpOptions): Promise<{ close: () => Promi
       return;
     }
 
-    const cfg = configForBinding(opts.config, binding);
-    const mcp = createMemoryMcpServer({
-      config: cfg,
-      memory: createSdkMemoryPort(cfg),
-      log: opts.log,
-    });
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const sessionIdHeader = req.headers["mcp-session-id"];
+    const sessionId = typeof sessionIdHeader === "string" ? sessionIdHeader : undefined;
+
     try {
-      await mcp.connect(transport);
+      if (sessionId) {
+        const session = sessions.get(sessionId);
+        // Sessions are token-scoped: a valid session id under a different
+        // token must not resume someone else's identity selection.
+        if (!session || session.token !== token) {
+          res.writeHead(404, { "content-type": "application/json" });
+          res.end(
+            JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32001, message: "Session not found; re-initialize" },
+              id: null,
+            }),
+          );
+          return;
+        }
+        session.lastSeen = Date.now();
+        await session.transport.handleRequest(req, res);
+        return;
+      }
+
+      if (sessions.size >= MAX_SESSIONS) {
+        res.writeHead(503, { "content-type": "application/json" });
+        res.end(JSON.stringify({ error: "too_many_sessions" }));
+        return;
+      }
+
+      // No session id: must be an initialize request; the transport rejects
+      // anything else with a protocol error.
+      const transport = await createSession(token, binding);
       await transport.handleRequest(req, res);
     } catch (err) {
       opts.log.error(`http mcp error: ${err instanceof Error ? err.message : String(err)}`);
@@ -87,7 +172,13 @@ export function startHttpServer(opts: HttpOptions): Promise<{ close: () => Promi
     httpServer.listen(opts.port, opts.host, () => {
       opts.log.info(`streamable HTTP listening on http://${opts.host}:${opts.port}/mcp`);
       resolve({
-        close: () => new Promise((r) => httpServer.close(() => r())),
+        close: () =>
+          new Promise((r) => {
+            clearInterval(sweep);
+            for (const [, session] of sessions) session.transport.close().catch(() => {});
+            sessions.clear();
+            httpServer.close(() => r());
+          }),
       });
     });
   });

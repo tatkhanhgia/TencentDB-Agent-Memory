@@ -65,10 +65,33 @@ if [[ -z "${TDAI_MCP_TOKEN:-}" ]]; then
   info "已生成 MCP token 并写入 .mcp.env"
 fi
 
-# Bindings: token → identity (server-side; Core API key is never sent to clients)
+# Bindings: token → identity/identities (server-side; Core API key is never sent to clients).
+# Optional .mcp.bindings.json adds extra tokens or multi-identity bindings
+# ({"tok-…": {"identities": [{name, teamId, agentId, userId}, …], "default": "…"}}).
+# The default single-identity token from .mcp.env is always merged in unless
+# the file overrides that same token.
 TASK_JSON=""
 [[ -n "${TDAI_TASK_ID:-}" ]] && TASK_JSON=",\"taskId\":\"${TDAI_TASK_ID}\""
-export TDAI_MCP_BINDINGS="{\"${TDAI_MCP_TOKEN}\":{\"teamId\":\"${TDAI_TEAM_ID}\",\"agentId\":\"${TDAI_AGENT_ID}\",\"userId\":\"${TDAI_USER_ID}\"${TASK_JSON}}}"
+DEFAULT_BINDING="{\"teamId\":\"${TDAI_TEAM_ID}\",\"agentId\":\"${TDAI_AGENT_ID}\",\"userId\":\"${TDAI_USER_ID}\"${TASK_JSON}}"
+BINDINGS_FILE="$SCRIPT_DIR/.mcp.bindings.json"
+if [[ -f "$BINDINGS_FILE" ]]; then
+  TDAI_MCP_BINDINGS="$(node -e '
+    const fs = require("fs");
+    const extra = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+    if (!extra || typeof extra !== "object" || Array.isArray(extra)) {
+      console.error(".mcp.bindings.json must be a JSON object of token -> binding");
+      process.exit(1);
+    }
+    const merged = { ...extra };
+    const token = process.argv[3];
+    if (!merged[token]) merged[token] = JSON.parse(process.argv[2]);
+    process.stdout.write(JSON.stringify(merged));
+  ' "$BINDINGS_FILE" "$DEFAULT_BINDING" "$TDAI_MCP_TOKEN")" || die ".mcp.bindings.json 解析失败"
+  export TDAI_MCP_BINDINGS
+  info "已合并 .mcp.bindings.json（多 token / 多 identity）"
+else
+  export TDAI_MCP_BINDINGS="{\"${TDAI_MCP_TOKEN}\":${DEFAULT_BINDING}}"
+fi
 export TDAI_MCP_HTTP_PORT="$MCP_PORT"
 export TDAI_MCP_HTTP_HOST="$MCP_HOST"
 

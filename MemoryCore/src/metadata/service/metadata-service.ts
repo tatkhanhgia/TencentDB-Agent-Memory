@@ -1059,8 +1059,10 @@ export class MetadataService {
    * 幂等确保 (team, agent) 对应的 chat_memory 资产存在并已绑定到 agent。
    *
    * 首次调用时会同步完成三件事（严格顺序）：
-   *   1. createAsset({asset_type:'chat_memory', visibility:'private',
+   *   1. createAsset({asset_type:'chat_memory', visibility:'team',
    *      owner_user_id: agent.owner_user_id})
+   *      （team 而非 private：Panel 的 memory 视图按 visibility:'team' 过滤，
+   *      private 会导致新 agent 的记忆在 UI 上不可见）
    *   2. store.addAgentFixedAsset(agent, {asset_id, injection_mode:'summary'})
    *   3. 写入进程内 LRU 缓存，后续同 (team, agent) 请求直接短路
    *
@@ -1119,7 +1121,7 @@ export class MetadataService {
           name: `Memory of ${agent.name}`,
           owner_user_id: agent.owner_user_id,
           source_type: "auto",
-          visibility: "private",
+          visibility: "team",
           status: "active",
         });
       } catch (err) {

@@ -181,6 +181,14 @@ export function createMemoryMcpServer(deps: ServerDeps): Server {
         ok: true,
         active: { name: identity.name, agent_id: identity.agentId },
         message: `Memory identity "${identity.name}" is now active for this session.`,
+        write_routing: {
+          note:
+            "Reads follow this session's identity. Session-end lesson capture routes per project: " +
+            `a project folder named like "${identity.name}" routes here automatically; ` +
+            "otherwise a .tdai-project.env at the project root decides, else the machine default.",
+          override_file: ".tdai-project.env",
+          override_content: `TDAI_AGENT_ID=${identity.agentId}\nTDAI_TEAM_ID=${identity.teamId}\nTDAI_USER_ID=${identity.userId}`,
+        },
       };
       return {
         content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],

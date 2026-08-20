@@ -56,13 +56,17 @@ if [[ -z "${TDAI_REFLECT_LLM_BASE_URL:-}" && -f "$DEPLOY_DIR/.env" ]]; then
   export TDAI_REFLECT_LLM_MODEL="${MEMORY_LLM_MODEL:-}"
 fi
 
-# Per-project write identity: a .tdai-project.env at the project root (the
-# session's cwd, walking up to the git root) overrides which agent the
-# session's lessons are written to — so writes separate by project just like
-# reads. Expected content: TDAI_AGENT_ID=agt-… (TDAI_TEAM_ID/TDAI_USER_ID
-# optional). Without the file, lessons go to the default agent in .mcp.env.
+# Per-project write identity, resolved in priority order:
+#   1. .tdai-project.env at the project root (explicit override;
+#      TDAI_AGENT_ID=agt-…, TDAI_TEAM_ID/TDAI_USER_ID optional)
+#   2. A registry agent whose slugged name matches the project folder name
+#      (convention: name the Panel agent after the project folder and writes
+#      route automatically — zero setup)
+#   3. The default agent from .mcp.env
+ROUTE="default"
 if [[ -n "$SESSION_CWD" ]]; then
   DIR="$SESSION_CWD"
+  PROJECT_ROOT="$SESSION_CWD"
   while [[ -n "$DIR" && "$DIR" != "/" ]]; do
     if [[ -f "$DIR/.tdai-project.env" ]]; then
       set -a
@@ -70,11 +74,42 @@ if [[ -n "$SESSION_CWD" ]]; then
       source "$DIR/.tdai-project.env"
       set +a
       PROJECT_ENV="$DIR/.tdai-project.env"
+      ROUTE="file"
       break
     fi
-    [[ -d "$DIR/.git" ]] && break
+    if [[ -d "$DIR/.git" ]]; then
+      PROJECT_ROOT="$DIR"
+      break
+    fi
     DIR="$(dirname "$DIR")"
   done
+
+  # Convention match: project folder name ↔ registry agent name (both slugged).
+  if [[ "$ROUTE" == "default" && -n "${TDAI_ENDPOINT:-}" && -n "${TDAI_API_KEY:-}" ]]; then
+    MATCH_ID="$(curl -sS --max-time 3 -X POST "${TDAI_ENDPOINT%/}/v3/meta/agent/list" \
+      -H "Authorization: Bearer local" \
+      -H "x-tdai-user-key: ${TDAI_API_KEY}" \
+      -H "x-tdai-service-id: ${TDAI_SERVICE_ID:-default}" \
+      -H "Content-Type: application/json" \
+      -d "{\"team_id\":\"${TDAI_TEAM_ID}\",\"limit\":100}" 2>/dev/null \
+      | PROJECT_NAME="$(basename "$PROJECT_ROOT")" "$NODE" -e '
+        let d = "";
+        process.stdin.on("data", (c) => (d += c)).on("end", () => {
+          try {
+            const resp = JSON.parse(d);
+            if (resp.code !== 0) return;
+            const slug = (s) => String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+            const want = slug(process.env.PROJECT_NAME || "");
+            if (!want) return;
+            const hit = (resp.data.items || []).find((a) => a.status === "active" && slug(a.name) === want);
+            if (hit) process.stdout.write(hit.agent_id);
+          } catch {}
+        });' || true)"
+    if [[ -n "$MATCH_ID" ]]; then
+      export TDAI_AGENT_ID="$MATCH_ID"
+      ROUTE="folder-name:$(basename "$PROJECT_ROOT")"
+    fi
+  fi
 fi
 
 # Local models (LM Studio) can take well over the 60s default on long
@@ -85,7 +120,7 @@ ARGS=(--transcript "$TRANSCRIPT" --format claude-code)
 [[ -n "$SESSION_ID" ]] && ARGS+=(--session-id "$SESSION_ID")
 
 {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] session=$SESSION_ID agent=${TDAI_AGENT_ID:-?}${PROJECT_ENV:+ (project: $PROJECT_ENV)} transcript=$TRANSCRIPT"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] session=$SESSION_ID agent=${TDAI_AGENT_ID:-?} route=$ROUTE transcript=$TRANSCRIPT"
   nohup "$NODE" "$REFLECT_BIN" "${ARGS[@]}" >> "$LOG_FILE" 2>&1 &
 } >> "$LOG_FILE" 2>&1
 

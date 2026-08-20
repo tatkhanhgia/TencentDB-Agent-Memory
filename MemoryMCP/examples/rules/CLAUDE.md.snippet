@@ -7,3 +7,5 @@ When a task references past decisions or conventions, use `tdai_memory_search` (
 Do not write memory yourself. Capture runs automatically at session end via a hook, not the model.
 
 Do not dump memory contents verbatim into files or commits.
+
+Session-end lessons route to a memory store automatically: project folder named like an agent -> that agent; else a `.tdai-project.env` at the project root; else the machine default. If the user asks for this project's lessons to go to a specific identity and the folder name doesn't match it, create `.tdai-project.env` at the project root using the `write_routing.override_content` returned by `tdai_identity_use`.

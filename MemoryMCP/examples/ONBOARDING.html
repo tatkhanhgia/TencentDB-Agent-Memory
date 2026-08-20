@@ -198,7 +198,13 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <li>The hook is fire-and-forget (always exits 0, runs detached). Log: <code>deploy/global-images/.reflect.log</code>.</li>
   <li>Sessions shorter than 6 text turns are skipped. Extraction uses the local LLM (LM Studio, <code>127.0.0.1:1234</code>) — it must be running with the model loaded, or the hook logs an error and writes nothing.</li>
   <li>Writes are idempotent: re-running reflect on the same session never duplicates lessons.</li>
-  <li><strong>Per-project write identity:</strong> by default lessons are written to the agent in <code>.mcp.env</code>. To route a project's lessons into its own store, put a <code>.tdai-project.env</code> at the project root containing <code>TDAI_AGENT_ID=agt-…</code> — the hook resolves it from the session's cwd (walking up to the git root). Reads follow the session's picker choice; writes follow this file.</li>
+  <li><strong>Per-project write identity</strong> — resolved automatically, in priority order:
+    <ol>
+      <li><code>.tdai-project.env</code> at the project root (explicit override; <code>sync-memory-identities.sh --link</code> writes it, or any agent can from the <code>write_routing</code> info returned by <code>tdai_identity_use</code>).</li>
+      <li><strong>Folder-name convention (zero setup):</strong> an active registry agent whose slugged name matches the project folder name — <em>name the Panel agent after the project folder and writes route themselves</em>.</li>
+      <li>The machine default agent from <code>.mcp.env</code>.</li>
+    </ol>
+    Reads follow the session's picker choice; writes follow this resolution. The <code>.reflect.log</code> line shows which route was used (<code>route=file|folder-name:…|default</code>).</li>
 </ul>
 
 <h2 id="identity">5. The identity model (what the picker is about)</h2>

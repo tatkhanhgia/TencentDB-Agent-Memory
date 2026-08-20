@@ -119,10 +119,13 @@
   </tr>
 </table>
 <p class="muted">Tokens are secrets: both files are gitignored. Read the actual value from the file — never commit it, never paste it into a repo.</p>
+<div class="card warn-box"><strong>Two things agents often miss:</strong>
+(1) MCP configs are read at <em>session start</em> — after writing the config, the current session cannot use it; open a new session.
+(2) A brand-new <em>long-lived</em> project should usually get <em>its own agent</em> (see §5 "Adding a new agent/project") instead of piggybacking on an existing identity; reusing the device token's existing identities is for shared/personal machine-wide memory.</div>
 
 <h3><span class="chip">HTTP</span> Preferred transport — works for Claude Code, Cursor, Windsurf, OpenCode</h3>
 
-<p><strong>Claude Code</strong> — project <code>.mcp.json</code>, or <code>~/.claude.json</code> for user-scope:</p>
+<p><strong>Claude Code</strong> — project <code>.mcp.json</code> (preferred when the setup belongs to one repo), or <code>~/.claude.json</code> user-scope (one config for every project on this machine):</p>
 <pre><code>{
   "mcpServers": {
     "tdai-memory": {
@@ -176,7 +179,7 @@
 <p>Codex uses the same command in <code>~/.codex/config.toml</code> — see <code>examples/codex/config.toml</code>. Per-harness details live in each <code>examples/&lt;harness&gt;/README.md</code>.</p>
 
 <h2 id="step2">3. Step 2 — Teach the agent to use memory (rules)</h2>
-<p>Add this to the harness's rules file — <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, <code>.windsurfrules</code>… Ready-made snippets: <code>examples/rules/</code>.</p>
+<p><strong>Append</strong> this to the harness's rules file (never replace existing rules) — <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, <code>.windsurfrules</code>… Ready-made snippets: <code>examples/rules/</code>.</p>
 <pre><code># TDAI memory (read-only)
 At session start, call `tdai_memory_context` once to load team memory
 before non-trivial work.

@@ -4,16 +4,16 @@
 
 Two transports, same four tools (`tdai_memory_context`, `tdai_memory_search`, `tdai_conversation_search`, `tdai_scene_read`):
 
-- **HTTP (preferred)** — `http://127.0.0.1:8425/mcp` with `Authorization: Bearer tok-local-dev` (replace with the real `TDAI_MCP_TOKEN` from `deploy/global-images/.mcp.env`, also printed by `start-memory-mcp.sh`).
+- **HTTP (preferred)** — `http://127.0.0.1:8425/mcp` with `Authorization: Bearer tok-local-dev` (replace with the real device token from `deploy/global-images/.mcp.bindings.json`, also printed by `start-memory-mcp.sh`).
 - **Stdio fallback** — `command` is the wrapper `/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh`. The wrapper sources env internally; do **not** add an env block.
 
 JSON files in each harness directory are the HTTP variant (valid JSON, no comments). Stdio is documented in that directory's `README.md`. Codex is stdio-only (`config.toml`).
 
 Agent-facing “read memory, do not write” snippets: [`rules/`](rules/).
 
-## Multi-identity device token (optional)
+## Device token & identities
 
-Instead of one token per agent/project, a single **device token** can map to several memory identities (one per agent/project). Declare them in `deploy/global-images/.mcp.bindings.json` (see `.mcp.bindings.json.example`); `start-memory-mcp.sh` merges the file into the server bindings on start. Then every harness uses the same one-time config with that token, and adding a new agent never touches harness configs again.
+Every token is a **device token** mapping to one or more memory identities (one per agent/project), declared in `deploy/global-images/.mcp.bindings.json` (bootstrapped on first `start-memory-mcp.sh` run; template: `.mcp.bindings.json.example`). Every harness uses the same one-time config with that token, and adding a new agent never touches harness configs again. Single-purpose tokens hard-bound to one identity in `.mcp.env` were removed.
 
 Per session, the active identity is chosen once:
 

@@ -81,7 +81,8 @@ export function parseBindingsJson(raw: string | undefined): Map<string, Principa
       continue;
     }
 
-    // Legacy shape: the record itself is one identity; binds automatically.
+    // Deprecated single-identity shape (kept for hand-written bindings):
+    // the record itself is one identity; binds automatically.
     const identity = parseIdentity(rec, token);
     map.set(token, { identities: [identity], defaultName: identity.name });
   }

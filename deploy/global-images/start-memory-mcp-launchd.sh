@@ -18,11 +18,11 @@ if [[ -z "${TDAI_API_KEY:-}" && -s "$SCRIPT_DIR/.admin-key" ]]; then
   TDAI_API_KEY="$(cat "$SCRIPT_DIR/.admin-key")"
   export TDAI_API_KEY
 fi
-[[ -n "${TDAI_MCP_TOKEN:-}" ]] || { echo "[memory-mcp-launchd] TDAI_MCP_TOKEN empty — run start-memory-mcp.sh once to generate it" >&2; exit 1; }
-
-TASK_JSON=""
-[[ -n "${TDAI_TASK_ID:-}" ]] && TASK_JSON=",\"taskId\":\"${TDAI_TASK_ID}\""
-export TDAI_MCP_BINDINGS="{\"${TDAI_MCP_TOKEN}\":{\"teamId\":\"${TDAI_TEAM_ID}\",\"agentId\":\"${TDAI_AGENT_ID}\",\"userId\":\"${TDAI_USER_ID}\"${TASK_JSON}}}"
+# Bindings live only in .mcp.bindings.json (device tokens → identity lists).
+BINDINGS_FILE="$SCRIPT_DIR/.mcp.bindings.json"
+[[ -f "$BINDINGS_FILE" ]] || { echo "[memory-mcp-launchd] $BINDINGS_FILE missing — run start-memory-mcp.sh once to bootstrap it" >&2; exit 1; }
+TDAI_MCP_BINDINGS="$(cat "$BINDINGS_FILE")"
+export TDAI_MCP_BINDINGS
 export TDAI_MCP_HTTP_PORT="${TDAI_MCP_HTTP_PORT:-8425}"
 export TDAI_MCP_HTTP_HOST="${TDAI_MCP_HTTP_HOST:-127.0.0.1}"
 

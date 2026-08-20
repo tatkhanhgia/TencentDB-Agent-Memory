@@ -7,8 +7,9 @@
 #   ./start-memory-mcp.sh --status # health probe only
 #
 # Endpoint for harnesses:  http://127.0.0.1:8425/mcp
-# Auth: Authorization: Bearer $TDAI_MCP_TOKEN (from .mcp.env; auto-generated
-#       on first run). Token maps server-side to team/agent/user — the Core
+# Auth: Authorization: Bearer <device token from .mcp.bindings.json>.
+#       Every token maps server-side to a LIST of identities; the session
+#       picks one (elicitation / tdai_identity_use, or "default"). The Core
 #       API key never leaves this machine's server side.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -53,45 +54,49 @@ if [[ -z "${TDAI_API_KEY:-}" ]]; then
 fi
 require_vars TDAI_ENDPOINT TDAI_SERVICE_ID TDAI_TEAM_ID TDAI_AGENT_ID TDAI_USER_ID
 
-# Token: generate once and persist into .mcp.env so harness configs stay valid.
-if [[ -z "${TDAI_MCP_TOKEN:-}" ]]; then
-  TDAI_MCP_TOKEN="tok-$(openssl rand -hex 16)"
-  export TDAI_MCP_TOKEN
-  if grep -q '^TDAI_MCP_TOKEN=' "$MCP_ENV_FILE"; then
-    sed -i '' "s|^TDAI_MCP_TOKEN=.*|TDAI_MCP_TOKEN=${TDAI_MCP_TOKEN}|" "$MCP_ENV_FILE"
-  else
-    printf '\nTDAI_MCP_TOKEN=%s\n' "$TDAI_MCP_TOKEN" >> "$MCP_ENV_FILE"
-  fi
-  info "已生成 MCP token 并写入 .mcp.env"
-fi
-
-# Bindings: token → identity/identities (server-side; Core API key is never sent to clients).
-# Optional .mcp.bindings.json adds extra tokens or multi-identity bindings
-# ({"tok-…": {"identities": [{name, teamId, agentId, userId}, …], "default": "…"}}).
-# The default single-identity token from .mcp.env is always merged in unless
-# the file overrides that same token.
-TASK_JSON=""
-[[ -n "${TDAI_TASK_ID:-}" ]] && TASK_JSON=",\"taskId\":\"${TDAI_TASK_ID}\""
-DEFAULT_BINDING="{\"teamId\":\"${TDAI_TEAM_ID}\",\"agentId\":\"${TDAI_AGENT_ID}\",\"userId\":\"${TDAI_USER_ID}\"${TASK_JSON}}"
+# Bindings live ONLY in .mcp.bindings.json: token → {identities: [...], default?}.
+# Single-token mode (TDAI_MCP_TOKEN in .mcp.env, hard-bound to one identity)
+# was removed — coding harnesses serve many projects, so every token is a
+# device token that lists identities and the session picks one.
+# First run: bootstrap the file with one device token wrapping the .mcp.env identity.
 BINDINGS_FILE="$SCRIPT_DIR/.mcp.bindings.json"
-if [[ -f "$BINDINGS_FILE" ]]; then
-  TDAI_MCP_BINDINGS="$(node -e '
-    const fs = require("fs");
-    const extra = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-    if (!extra || typeof extra !== "object" || Array.isArray(extra)) {
-      console.error(".mcp.bindings.json must be a JSON object of token -> binding");
-      process.exit(1);
-    }
-    const merged = { ...extra };
-    const token = process.argv[3];
-    if (!merged[token]) merged[token] = JSON.parse(process.argv[2]);
-    process.stdout.write(JSON.stringify(merged));
-  ' "$BINDINGS_FILE" "$DEFAULT_BINDING" "$TDAI_MCP_TOKEN")" || die ".mcp.bindings.json 解析失败"
-  export TDAI_MCP_BINDINGS
-  info "已合并 .mcp.bindings.json（多 token / 多 identity）"
-else
-  export TDAI_MCP_BINDINGS="{\"${TDAI_MCP_TOKEN}\":${DEFAULT_BINDING}}"
+if [[ ! -f "$BINDINGS_FILE" ]]; then
+  BOOT_TOKEN="tok-$(openssl rand -hex 16)"
+  TASK_JSON=""
+  [[ -n "${TDAI_TASK_ID:-}" ]] && TASK_JSON=",\"taskId\":\"${TDAI_TASK_ID}\""
+  cat > "$BINDINGS_FILE" <<EOF
+{
+  "_comment": "Device token bindings: token -> {identities:[{name,teamId,agentId,userId},...], default?}. Bootstrapped from .mcp.env; add identities here, then rerun start-memory-mcp.sh.",
+  "${BOOT_TOKEN}": {
+    "identities": [
+      { "name": "main", "description": "Bootstrapped from .mcp.env", "teamId": "${TDAI_TEAM_ID}", "agentId": "${TDAI_AGENT_ID}", "userId": "${TDAI_USER_ID}"${TASK_JSON} }
+    ]
+  }
+}
+EOF
+  chmod 600 "$BINDINGS_FILE"
+  info "已生成 .mcp.bindings.json（device token: ${BOOT_TOKEN}）"
 fi
+TDAI_MCP_BINDINGS="$(node -e '
+  const fs = require("fs");
+  const raw = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    console.error(".mcp.bindings.json must be a JSON object of token -> binding");
+    process.exit(1);
+  }
+  const tokens = Object.keys(raw).filter((k) => !k.startsWith("_"));
+  if (tokens.length === 0) {
+    console.error(".mcp.bindings.json declares no tokens");
+    process.exit(1);
+  }
+  process.stdout.write(JSON.stringify(raw));
+' "$BINDINGS_FILE")" || die ".mcp.bindings.json 解析失败"
+export TDAI_MCP_BINDINGS
+FIRST_TOKEN="$(node -e '
+  const raw = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  process.stdout.write(Object.keys(raw).find((k) => !k.startsWith("_")) ?? "");
+' "$BINDINGS_FILE")"
+info "已加载 .mcp.bindings.json（$(node -e 'const r=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));console.log(Object.keys(r).filter(k=>!k.startsWith("_")).length)' "$BINDINGS_FILE") device token）"
 export TDAI_MCP_HTTP_PORT="$MCP_PORT"
 export TDAI_MCP_HTTP_HOST="$MCP_HOST"
 
@@ -126,7 +131,7 @@ for _ in $(seq 1 15); do
     echo ""
     echo "  ┌─ 任意 MCP harness 连接方式 ────────────────────────────────────┐"
     echo "  │  URL:    http://${MCP_HOST}:${MCP_PORT}/mcp"
-    echo "  │  Header: Authorization: Bearer ${TDAI_MCP_TOKEN}"
+    echo "  │  Header: Authorization: Bearer ${FIRST_TOKEN}"
     echo "  │  stdio 备选: $SCRIPT_DIR/tdai-memory-mcp.sh"
     echo "  │  示例配置: MemoryMCP/examples/"
     echo "  └────────────────────────────────────────────────────────────────┘"

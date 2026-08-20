@@ -106,6 +106,7 @@
 <p>There is exactly one kind of token: a <strong>device token</strong>, declared in <code>deploy/global-images/.mcp.bindings.json</code> (bootstrapped automatically on first <code>./start-memory-mcp.sh</code> run, and printed by that script). Each token maps to a <em>list</em> of identities — one per agent/project:</p>
 <ul>
   <li><strong>Several identities, no <code>"default"</code></strong> → the first memory tool call of a session shows the user a native picker (MCP elicitation). Clients without elicitation get the <code>tdai_identity_use</code> fallback tool instead.</li>
+  <li><strong><code>"suggested": "&lt;name&gt;"</code></strong> → that identity comes preselected in the picker, so accepting the usual choice is a single Enter (you are still asked).</li>
   <li><strong>One identity, or <code>"default"</code> declared</strong> → the session binds silently, nothing to pick.</li>
 </ul>
 <p>Adding an agent/project later means editing this one server-side file — harness configs never change. (Single-purpose tokens hard-bound in <code>.mcp.env</code> were removed: coding harnesses serve many projects, so a fixed binding is wrong by default.)</p>
@@ -197,6 +198,7 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <li>The hook is fire-and-forget (always exits 0, runs detached). Log: <code>deploy/global-images/.reflect.log</code>.</li>
   <li>Sessions shorter than 6 text turns are skipped. Extraction uses the local LLM (LM Studio, <code>127.0.0.1:1234</code>) — it must be running with the model loaded, or the hook logs an error and writes nothing.</li>
   <li>Writes are idempotent: re-running reflect on the same session never duplicates lessons.</li>
+  <li><strong>Per-project write identity:</strong> by default lessons are written to the agent in <code>.mcp.env</code>. To route a project's lessons into its own store, put a <code>.tdai-project.env</code> at the project root containing <code>TDAI_AGENT_ID=agt-…</code> — the hook resolves it from the session's cwd (walking up to the git root). Reads follow the session's picker choice; writes follow this file.</li>
 </ul>
 
 <h2 id="identity">5. The identity model (what the picker is about)</h2>
@@ -209,9 +211,9 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
 
 <h3>Adding a new agent/project later</h3>
 <ol>
-  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>) → note its <code>agt-…</code> id.</li>
-  <li>Append an identity entry to <code>deploy/global-images/.mcp.bindings.json</code> (template: <code>.mcp.bindings.json.example</code>).</li>
-  <li>Restart the server: <code>./start-memory-mcp.sh</code>. Every harness using the device token sees the new identity immediately — <strong>no harness config changes</strong>.</li>
+  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>).</li>
+  <li>Run <code>deploy/global-images/sync-memory-identities.sh</code> — it pulls every active agent from the registry into the device token's identities and restarts the server. Every harness sees the new identity immediately — <strong>no harness config changes</strong>. (<code>--prune</code> also removes identities whose agent was deleted; manual edits to existing entries are preserved.)</li>
+  <li>To also <em>write</em> that project's lessons into its own store, drop a <code>.tdai-project.env</code> at the project root — see the write path below.</li>
 </ol>
 
 <h2 id="tools">6. Tool reference</h2>

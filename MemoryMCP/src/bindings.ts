@@ -21,6 +21,12 @@ export interface PrincipalBinding {
   identities: NamedIdentity[];
   /** When set, sessions bind to this identity without asking. */
   defaultName?: string;
+  /**
+   * Preselected choice in the picker (schema `default`): the user can accept
+   * it with a single Enter, but is still asked — unlike `defaultName`, which
+   * skips the question entirely. Falls back to the first identity.
+   */
+  suggestedName?: string;
 }
 
 function parseIdentity(raw: Record<string, unknown>, label: string, fallbackName?: string): NamedIdentity {
@@ -77,7 +83,11 @@ export function parseBindingsJson(raw: string | undefined): Map<string, Principa
       if (defaultName && !seen.has(defaultName)) {
         throw new Error(`TDAI_MCP_BINDINGS[${token}] default "${defaultName}" not in identities`);
       }
-      map.set(token, { identities, defaultName });
+      const suggestedName = String(rec.suggested ?? rec.suggestedName ?? "").trim() || undefined;
+      if (suggestedName && !seen.has(suggestedName)) {
+        throw new Error(`TDAI_MCP_BINDINGS[${token}] suggested "${suggestedName}" not in identities`);
+      }
+      map.set(token, { identities, defaultName, suggestedName });
       continue;
     }
 

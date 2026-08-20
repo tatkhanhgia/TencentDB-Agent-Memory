@@ -90,6 +90,28 @@ describe("MCP HTTP bindings", () => {
     }))).toThrow(/missing teamId\/agentId\/userId/);
   });
 
+  it("parses suggested (picker preselect) and validates it", () => {
+    const map = parseBindingsJson(JSON.stringify({
+      "tok-device": {
+        identities: [
+          { name: "a", teamId: "t", agentId: "agt-1", userId: "u" },
+          { name: "b", teamId: "t", agentId: "agt-2", userId: "u" },
+        ],
+        suggested: "b",
+      },
+    }));
+    const binding = map.get("tok-device")!;
+    expect(binding.suggestedName).toBe("b");
+    // suggested does NOT auto-bind — the user is still asked
+    expect(resolveInitialIdentity(binding)).toBeNull();
+    expect(() => parseBindingsJson(JSON.stringify({
+      "tok-x": {
+        identities: [{ name: "a", teamId: "t", agentId: "agt-1", userId: "u" }],
+        suggested: "missing",
+      },
+    }))).toThrow(/suggested "missing"/);
+  });
+
   it("ignores underscore-prefixed comment keys", () => {
     const map = parseBindingsJson(JSON.stringify({
       _comment: "docs only",

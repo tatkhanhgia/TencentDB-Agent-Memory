@@ -30,6 +30,7 @@ NODE="$(find_node)" || exit 0
 
 TRANSCRIPT="$(printf '%s' "$PAYLOAD" | "$NODE" -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).transcript_path??""))}catch{}})')"
 SESSION_ID="$(printf '%s' "$PAYLOAD" | "$NODE" -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).session_id??""))}catch{}})')"
+SESSION_CWD="$(printf '%s' "$PAYLOAD" | "$NODE" -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{process.stdout.write(String(JSON.parse(d).cwd??""))}catch{}})')"
 [[ -n "$TRANSCRIPT" && -f "$TRANSCRIPT" ]] || exit 0
 
 # Identity + reflect LLM config
@@ -55,6 +56,27 @@ if [[ -z "${TDAI_REFLECT_LLM_BASE_URL:-}" && -f "$DEPLOY_DIR/.env" ]]; then
   export TDAI_REFLECT_LLM_MODEL="${MEMORY_LLM_MODEL:-}"
 fi
 
+# Per-project write identity: a .tdai-project.env at the project root (the
+# session's cwd, walking up to the git root) overrides which agent the
+# session's lessons are written to — so writes separate by project just like
+# reads. Expected content: TDAI_AGENT_ID=agt-… (TDAI_TEAM_ID/TDAI_USER_ID
+# optional). Without the file, lessons go to the default agent in .mcp.env.
+if [[ -n "$SESSION_CWD" ]]; then
+  DIR="$SESSION_CWD"
+  while [[ -n "$DIR" && "$DIR" != "/" ]]; do
+    if [[ -f "$DIR/.tdai-project.env" ]]; then
+      set -a
+      # shellcheck disable=SC1090
+      source "$DIR/.tdai-project.env"
+      set +a
+      PROJECT_ENV="$DIR/.tdai-project.env"
+      break
+    fi
+    [[ -d "$DIR/.git" ]] && break
+    DIR="$(dirname "$DIR")"
+  done
+fi
+
 # Local models (LM Studio) can take well over the 60s default on long
 # transcripts; a timed-out extraction silently loses the session's lessons.
 export TDAI_REFLECT_TIMEOUT_MS="${TDAI_REFLECT_TIMEOUT_MS:-240000}"
@@ -63,7 +85,7 @@ ARGS=(--transcript "$TRANSCRIPT" --format claude-code)
 [[ -n "$SESSION_ID" ]] && ARGS+=(--session-id "$SESSION_ID")
 
 {
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] session=$SESSION_ID transcript=$TRANSCRIPT"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] session=$SESSION_ID agent=${TDAI_AGENT_ID:-?}${PROJECT_ENV:+ (project: $PROJECT_ENV)} transcript=$TRANSCRIPT"
   nohup "$NODE" "$REFLECT_BIN" "${ARGS[@]}" >> "$LOG_FILE" 2>&1 &
 } >> "$LOG_FILE" 2>&1
 

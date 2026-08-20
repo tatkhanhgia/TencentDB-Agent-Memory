@@ -128,9 +128,11 @@ describe("identity selection per MCP session", () => {
     client.setRequestHandler(ElicitRequestSchema, async (req) => {
       asked += 1;
       const schema = req.params.requestedSchema as {
-        properties: { identity: { enum: string[] } };
+        properties: { identity: { enum: string[]; default?: string } };
       };
       expect(schema.properties.identity.enum).toEqual(["coder", "testing"]);
+      // no `suggested` declared → first identity is preselected for one-Enter accept
+      expect(schema.properties.identity.default).toBe("coder");
       return { action: "accept", content: { identity: "coder" } };
     });
     await connect(server, client);

@@ -101,6 +101,8 @@ export function createMemoryMcpServer(deps: ServerDeps): Server {
                 description: "The identity decides which memory store this session reads.",
                 enum: ids.map((i) => i.name),
                 enumNames: ids.map((i) => identityLabel(i)),
+                // Preselect so a single Enter accepts the usual choice.
+                default: selection.binding.suggestedName ?? ids[0].name,
               },
             },
             required: ["identity"],

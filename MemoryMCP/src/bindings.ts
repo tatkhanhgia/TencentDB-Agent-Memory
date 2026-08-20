@@ -13,11 +13,10 @@ export interface NamedIdentity {
 }
 
 /**
- * token -> binding. A binding is a set of identities the token may act as.
- * Legacy single-identity bindings parse into a one-element set that binds
- * automatically. Core API key is never stored here.
+ * A binding whose identity list is concrete (static file entries, or the
+ * registry already resolved). This is what sessions operate on.
  */
-export interface PrincipalBinding {
+export interface ResolvedBinding {
   identities: NamedIdentity[];
   /** When set, sessions bind to this identity without asking. */
   defaultName?: string;
@@ -27,6 +26,17 @@ export interface PrincipalBinding {
    * skips the question entirely. Falls back to the first identity.
    */
   suggestedName?: string;
+}
+
+/**
+ * token -> binding. A binding is a set of identities the token may act as —
+ * either a static list, or `"registry"` to resolve the list live from the
+ * Core agent registry (the Panel) at session creation. Legacy single-identity
+ * bindings parse into a one-element set that binds automatically. Core API
+ * key is never stored here.
+ */
+export interface PrincipalBinding extends Omit<ResolvedBinding, "identities"> {
+  identities: NamedIdentity[] | "registry";
 }
 
 function parseIdentity(raw: Record<string, unknown>, label: string, fallbackName?: string): NamedIdentity {
@@ -63,6 +73,15 @@ export function parseBindingsJson(raw: string | undefined): Map<string, Principa
     // Underscore-prefixed keys are comments (e.g. "_comment" in .mcp.bindings.json).
     if (token.startsWith("_")) continue;
     const rec = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
+
+    if (rec.identities === "registry") {
+      // Membership of default/suggested is validated at resolve time —
+      // the list is not known until the registry is queried.
+      const defaultName = String(rec.default ?? rec.defaultName ?? "").trim() || undefined;
+      const suggestedName = String(rec.suggested ?? rec.suggestedName ?? "").trim() || undefined;
+      map.set(token, { identities: "registry", defaultName, suggestedName });
+      continue;
+    }
 
     if (Array.isArray(rec.identities)) {
       const identities: NamedIdentity[] = [];
@@ -103,7 +122,7 @@ export function parseBindingsJson(raw: string | undefined): Map<string, Principa
  * Identity a session starts with: the sole identity, or the declared default.
  * Returns null when the user (or a fallback tool call) must choose.
  */
-export function resolveInitialIdentity(binding: PrincipalBinding): NamedIdentity | null {
+export function resolveInitialIdentity(binding: ResolvedBinding): NamedIdentity | null {
   if (binding.identities.length === 1) return binding.identities[0];
   if (binding.defaultName) {
     return binding.identities.find((i) => i.name === binding.defaultName) ?? null;
@@ -111,7 +130,7 @@ export function resolveInitialIdentity(binding: PrincipalBinding): NamedIdentity
   return null;
 }
 
-export function findIdentity(binding: PrincipalBinding, name: string): NamedIdentity | null {
+export function findIdentity(binding: ResolvedBinding, name: string): NamedIdentity | null {
   return binding.identities.find((i) => i.name === name) ?? null;
 }
 

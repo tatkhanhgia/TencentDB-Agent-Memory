@@ -103,7 +103,7 @@
 <h2 id="step1">2. Step 1 — Point your harness at the MCP server</h2>
 
 <h3>Get the device token</h3>
-<p>There is exactly one kind of token: a <strong>device token</strong>, declared in <code>deploy/global-images/.mcp.bindings.json</code> (bootstrapped automatically on first <code>./start-memory-mcp.sh</code> run, and printed by that script). Each token maps to a <em>list</em> of identities — one per agent/project:</p>
+<p>There is exactly one kind of token: a <strong>device token</strong>, declared in <code>deploy/global-images/.mcp.bindings.json</code> (bootstrapped automatically on first <code>./start-memory-mcp.sh</code> run, and printed by that script). By default a token declares <code>"identities": "registry"</code> — the identity list resolves <em>live</em> from the Panel agent registry, one identity per agent/project. A static <code>identities: [...]</code> array pins the list instead. Per session:</p>
 <ul>
   <li><strong>Several identities, no <code>"default"</code></strong> → the first memory tool call of a session shows the user a native picker (MCP elicitation). Clients without elicitation get the <code>tdai_identity_use</code> fallback tool instead.</li>
   <li><strong><code>"suggested": "&lt;name&gt;"</code></strong> → that identity comes preselected in the picker, so accepting the usual choice is a single Enter (you are still asked).</li>
@@ -211,9 +211,9 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
 
 <h3>Adding a new agent/project later</h3>
 <ol>
-  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>).</li>
-  <li>Run <code>deploy/global-images/sync-memory-identities.sh</code> — it pulls every active agent from the registry into the device token's identities and restarts the server. Every harness sees the new identity immediately — <strong>no harness config changes</strong>. (<code>--prune</code> also removes identities whose agent was deleted; manual edits to existing entries are preserved.)</li>
-  <li>To also <em>write</em> that project's lessons into its own store, drop a <code>.tdai-project.env</code> at the project root — see the write path below.</li>
+  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>) — <strong>that's it for reads</strong>: with <code>"identities": "registry"</code> the new agent appears in every harness's picker within ~30 seconds (registry cache TTL). No commands, no config changes.</li>
+  <li>To also <em>write</em> that project's lessons into its own store, run <code>deploy/global-images/sync-memory-identities.sh --link &lt;project-dir&gt; &lt;agent-name&gt;</code> once — it writes the project's <code>.tdai-project.env</code> (see the write path below).</li>
+  <li>Static-list bindings only: run <code>sync-memory-identities.sh</code> (optionally <code>--prune</code>) to pull the registry into the pinned list.</li>
 </ol>
 
 <h2 id="tools">6. Tool reference</h2>

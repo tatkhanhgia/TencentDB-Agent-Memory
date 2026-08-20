@@ -1,6 +1,10 @@
 {
-  "_comment": "MCP bindings (the only token source; bootstrapped by start-memory-mcp.sh, synced from the Panel agent registry by sync-memory-identities.sh). Copy to .mcp.bindings.json (gitignored — tokens are secrets). Each token: {identities: [...], default?, suggested?}. No default → the first tool call asks the user to pick (MCP elicitation, falling back to tdai_identity_use); 'suggested' preselects a choice so one Enter accepts it; 'default' skips the question entirely.",
+  "_comment": "Device token bindings (bootstrapped by start-memory-mcp.sh). identities: \"registry\" resolves the list live from the Panel agent registry — create an agent in the web UI and it appears in the harness picker, no sync needed. 'suggested' preselects the picker choice (one Enter accepts); 'default' skips the question entirely. Replace \"registry\" with a static identities:[...] array (see _static_example) to pin the list; sync-memory-identities.sh can then sync it from the registry.",
   "tok-example-device-token": {
+    "identities": "registry",
+    "suggested": "coder"
+  },
+  "_static_example": {
     "identities": [
       {
         "name": "coder",
@@ -8,15 +12,7 @@
         "teamId": "team-xxxxxxxx",
         "agentId": "agt-xxxxxxxx",
         "userId": "usr-xxxxxxxx"
-      },
-      {
-        "name": "project-x",
-        "description": "Project X memory",
-        "teamId": "team-xxxxxxxx",
-        "agentId": "agt-yyyyyyyy",
-        "userId": "usr-xxxxxxxx"
       }
-    ],
-    "suggested": "coder"
+    ]
   }
 }

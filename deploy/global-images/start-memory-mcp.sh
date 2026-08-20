@@ -58,24 +58,22 @@ require_vars TDAI_ENDPOINT TDAI_SERVICE_ID TDAI_TEAM_ID TDAI_AGENT_ID TDAI_USER_
 # Single-token mode (TDAI_MCP_TOKEN in .mcp.env, hard-bound to one identity)
 # was removed — coding harnesses serve many projects, so every token is a
 # device token that lists identities and the session picks one.
-# First run: bootstrap the file with one device token wrapping the .mcp.env identity.
+# First run: bootstrap one device token in registry mode — the identity list
+# resolves live from the Panel agent registry, so creating an agent in the
+# web UI is enough for it to appear in the harness picker (no manual sync).
 BINDINGS_FILE="$SCRIPT_DIR/.mcp.bindings.json"
 if [[ ! -f "$BINDINGS_FILE" ]]; then
   BOOT_TOKEN="tok-$(openssl rand -hex 16)"
-  TASK_JSON=""
-  [[ -n "${TDAI_TASK_ID:-}" ]] && TASK_JSON=",\"taskId\":\"${TDAI_TASK_ID}\""
   cat > "$BINDINGS_FILE" <<EOF
 {
-  "_comment": "Device token bindings: token -> {identities:[{name,teamId,agentId,userId},...], default?}. Bootstrapped from .mcp.env; add identities here, then rerun start-memory-mcp.sh.",
+  "_comment": "Device token bindings. identities: \"registry\" resolves the list live from the Panel agent registry (create an agent in the web UI -> it appears in the picker). Replace with a static identities:[...] array to pin the list. suggested preselects the picker choice; default skips the question entirely.",
   "${BOOT_TOKEN}": {
-    "identities": [
-      { "name": "main", "description": "Bootstrapped from .mcp.env", "teamId": "${TDAI_TEAM_ID}", "agentId": "${TDAI_AGENT_ID}", "userId": "${TDAI_USER_ID}"${TASK_JSON} }
-    ]
+    "identities": "registry"
   }
 }
 EOF
   chmod 600 "$BINDINGS_FILE"
-  info "已生成 .mcp.bindings.json（device token: ${BOOT_TOKEN}）"
+  info "已生成 .mcp.bindings.json（device token: ${BOOT_TOKEN}，registry 模式）"
 fi
 TDAI_MCP_BINDINGS="$(node -e '
   const fs = require("fs");

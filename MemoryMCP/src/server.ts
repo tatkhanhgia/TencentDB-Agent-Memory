@@ -11,7 +11,7 @@ import {
   resolveInitialIdentity,
   findIdentity,
   type NamedIdentity,
-  type PrincipalBinding,
+  type ResolvedBinding,
 } from "./bindings.js";
 import { handleToolCall } from "./handlers.js";
 import { IDENTITY_TOOL_NAMES, listToolDescriptors } from "./tools.js";
@@ -23,7 +23,7 @@ import { redactSecrets } from "./redact.js";
  * elicitation, falling back to the tdai_identity_use tool).
  */
 export interface IdentitySelection {
-  binding: PrincipalBinding;
+  binding: ResolvedBinding;
   makeConfig: (identity: NamedIdentity) => IdentityConfig;
   makeMemory: (cfg: IdentityConfig) => MemoryReadPort;
 }
@@ -102,7 +102,11 @@ export function createMemoryMcpServer(deps: ServerDeps): Server {
                 enum: ids.map((i) => i.name),
                 enumNames: ids.map((i) => identityLabel(i)),
                 // Preselect so a single Enter accepts the usual choice.
-                default: selection.binding.suggestedName ?? ids[0].name,
+                default:
+                  (selection.binding.suggestedName &&
+                    ids.some((i) => i.name === selection.binding.suggestedName)
+                    ? selection.binding.suggestedName
+                    : ids[0].name),
               },
             },
             required: ["identity"],

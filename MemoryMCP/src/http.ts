@@ -10,7 +10,9 @@ import {
   extractBearer,
   parseBindingsJson,
   type PrincipalBinding,
+  type ResolvedBinding,
 } from "./bindings.js";
+import { createRegistryIdentityProvider, type IdentityProvider } from "./registry.js";
 
 export interface HttpOptions {
   config: IdentityConfig;
@@ -51,6 +53,41 @@ export function startHttpServer(opts: HttpOptions): Promise<{ close: () => Promi
 
   const sessions = new Map<string, HttpSession>();
 
+  // Live identity source for `"identities": "registry"` bindings: agents
+  // created in the Panel appear in the picker without any manual sync.
+  let registryProvider: IdentityProvider | null = null;
+  function getRegistryProvider(): IdentityProvider {
+    if (!registryProvider) {
+      registryProvider = createRegistryIdentityProvider({
+        endpoint: opts.config.endpoint,
+        apiKey: opts.config.apiKey,
+        serviceId: opts.config.serviceId,
+        teamId: opts.config.teamId,
+        userId: opts.config.userId,
+      });
+    }
+    return registryProvider;
+  }
+
+  async function resolveBinding(binding: PrincipalBinding): Promise<ResolvedBinding> {
+    if (binding.identities !== "registry") {
+      return binding as ResolvedBinding;
+    }
+    const identities = await getRegistryProvider()();
+    const has = (name?: string) => Boolean(name && identities.some((i) => i.name === name));
+    if (binding.defaultName && !has(binding.defaultName)) {
+      opts.log.warn(`registry binding: default "${binding.defaultName}" not in registry — asking instead`);
+    }
+    if (binding.suggestedName && !has(binding.suggestedName)) {
+      opts.log.warn(`registry binding: suggested "${binding.suggestedName}" not in registry — ignored`);
+    }
+    return {
+      identities,
+      defaultName: has(binding.defaultName) ? binding.defaultName : undefined,
+      suggestedName: has(binding.suggestedName) ? binding.suggestedName : undefined,
+    };
+  }
+
   const sweep = setInterval(() => {
     const cutoff = Date.now() - SESSION_IDLE_TTL_MS;
     for (const [sid, session] of sessions) {
@@ -63,7 +100,8 @@ export function startHttpServer(opts: HttpOptions): Promise<{ close: () => Promi
   }, SESSION_SWEEP_INTERVAL_MS);
   sweep.unref();
 
-  async function createSession(token: string, binding: PrincipalBinding): Promise<StreamableHTTPServerTransport> {
+  async function createSession(token: string, rawBinding: PrincipalBinding): Promise<StreamableHTTPServerTransport> {
+    const binding = await resolveBinding(rawBinding);
     const mcp = createMemoryMcpServer({
       config: opts.config,
       log: opts.log,

@@ -1,5 +1,7 @@
 # MemoryMCP harness examples
 
+**New here? Start with [ONBOARDING.html](ONBOARDING.html)** — the full 3-step guide (transport config per harness, identity model, write-path hook, troubleshooting), readable in a browser and by agents.
+
 Two transports, same four tools (`tdai_memory_context`, `tdai_memory_search`, `tdai_conversation_search`, `tdai_scene_read`):
 
 - **HTTP (preferred)** — `http://127.0.0.1:8425/mcp` with `Authorization: Bearer tok-local-dev` (replace with the real `TDAI_MCP_TOKEN` from `deploy/global-images/.mcp.env`, also printed by `start-memory-mcp.sh`).

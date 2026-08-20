@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TDAI Memory — Harness Onboarding</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1d21; --muted: #5c6570; --line: #e3e7eb;
+    --card: #f6f8fa; --code-bg: #0f172a; --code-fg: #e2e8f0;
+    --accent: #0b6bcb; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+    --chip: #eaf2fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --line: #30363d;
+      --card: #161b22; --code-bg: #010409; --code-fg: #e6edf3;
+      --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+      --chip: #12233a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 40px 24px 96px; }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; }
+  h2 { font-size: 1.35rem; margin: 44px 0 12px; padding-top: 20px; border-top: 1px solid var(--line); }
+  h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+  p, li { color: var(--fg); }
+  .sub { color: var(--muted); margin-top: 0; }
+  a { color: var(--accent); }
+  code {
+    font: 0.86em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; word-break: break-all;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-fg);
+    border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+    font: 0.85rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre code { background: none; border: none; padding: 0; color: inherit; word-break: normal; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 0.93rem; display: block; overflow-x: auto; }
+  th, td { border: 1px solid var(--line); padding: 7px 11px; text-align: left; vertical-align: top; }
+  th { background: var(--card); }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 10px; padding: 16px 18px; margin: 16px 0;
+  }
+  .vn { border-left: 4px solid var(--accent); }
+  .warn-box { border-left: 4px solid var(--warn); }
+  .ok-box { border-left: 4px solid var(--ok); }
+  .chip {
+    display: inline-block; background: var(--chip); color: var(--accent);
+    border-radius: 999px; padding: 1px 11px; font-size: 0.78rem; font-weight: 600;
+    margin-right: 6px; vertical-align: 2px;
+  }
+  .flow {
+    display: block; overflow-x: auto; background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+    font: 0.8rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre;
+  }
+  details { margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+  .muted { color: var(--muted); }
+  .kbd { font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>TDAI Memory — Harness Onboarding</h1>
+<p class="sub">How to connect any coding agent (Claude Code, Cursor, Windsurf, OpenCode, Codex, Grok Build) to the TencentDB Agent Memory system. Written for both humans and agents: every config block is copy-paste ready.</p>
+
+<div class="card vn">
+  <strong>🇻🇳 Tóm tắt nhanh:</strong> Kết nối harness vào memory chỉ cần <strong>3 bước</strong> —
+  (1) trỏ MCP vào <code>http://127.0.0.1:8425/mcp</code> với token,
+  (2) thêm rules dạy agent gọi <code>tdai_memory_context</code> đầu session,
+  (3) (tuỳ chọn, chỉ Claude Code) gắn hook SessionEnd để tự đúc bài học khi đóng session.
+  Memory là <strong>read-only qua MCP</strong> — agent không bao giờ tự ghi.
+</div>
+
+<h2 id="architecture">1. Architecture in 30 seconds</h2>
+
+<div class="flow">                       READ (live, every session)
+┌─────────────┐   MCP Streamable HTTP    ┌──────────────────┐      ┌─────────────┐
+│   Harness    │ ───────────────────────▶ │  MemoryMCP :8425 │ ───▶ │ MemoryCore   │
+│ (any agent)  │   Bearer token            │  read-only tools │      │ :8420        │
+└─────────────┘                            └──────────────────┘      │ L0→L1→L2→L3 │
+      │                                                              └─────────────┘
+      │                WRITE (only at session end, only via hook)          ▲
+      └── SessionEnd hook ──▶ tdai-reflect CLI ── extracts ≤3 lessons ─────┘
+                              (writing nothing is the normal outcome)</div>
+
+<ul>
+  <li><strong>Reads</strong> go through a read-only MCP server. Four tools, nothing can mutate memory.</li>
+  <li><strong>Writes</strong> happen only when a session ends: a hook runs <code>tdai-reflect</code>, which extracts at most 3 durable lessons (ADRs, constraints, preferences) — or, most of the time, nothing. Agents must never write memory directly.</li>
+  <li>Memory layers: <strong>L0</strong> raw lessons → <strong>L1</strong> atomic memories → <strong>L2</strong> scene files → <strong>L3</strong> persona. Consolidation is automatic. All outputs are always English.</li>
+</ul>
+
+<h2 id="step1">2. Step 1 — Point your harness at the MCP server</h2>
+
+<h3>Choose a token first</h3>
+<table>
+  <tr><th>Token type</th><th>Where it lives</th><th>Behavior</th><th>Use when</th></tr>
+  <tr>
+    <td><strong>Device token</strong></td>
+    <td><code>deploy/global-images/.mcp.bindings.json</code></td>
+    <td>Maps to <em>multiple</em> identities. First tool call of a session shows the user a native picker (MCP elicitation). Non-supporting clients get the <code>tdai_identity_use</code> fallback tool.</td>
+    <td>One config for all harnesses on this machine. Adding an agent later never touches harness configs.</td>
+  </tr>
+  <tr>
+    <td><strong>Single token</strong></td>
+    <td><code>deploy/global-images/.mcp.env</code> (<code>TDAI_MCP_TOKEN</code>)</td>
+    <td>Binds silently to one fixed identity. No picker, no extra tools.</td>
+    <td>The harness serves exactly one project/agent, forever.</td>
+  </tr>
+</table>
+<p class="muted">Tokens are secrets: both files are gitignored. Read the actual value from the file — never commit it, never paste it into a repo.</p>
+
+<h3><span class="chip">HTTP</span> Preferred transport — works for Claude Code, Cursor, Windsurf, OpenCode</h3>
+
+<p><strong>Claude Code</strong> — project <code>.mcp.json</code>, or <code>~/.claude.json</code> for user-scope:</p>
+<pre><code>{
+  "mcpServers": {
+    "tdai-memory": {
+      "type": "http",
+      "url": "http://127.0.0.1:8425/mcp",
+      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+    }
+  }
+}</code></pre>
+
+<details><summary>Cursor — <code>~/.cursor/mcp.json</code> (or project <code>.cursor/mcp.json</code>)</summary>
+<pre><code>{
+  "mcpServers": {
+    "tdai-memory": {
+      "url": "http://127.0.0.1:8425/mcp",
+      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+    }
+  }
+}</code></pre></details>
+
+<details><summary>Windsurf — <code>~/.codeium/windsurf/mcp_config.json</code></summary>
+<pre><code>{
+  "mcpServers": {
+    "tdai-memory": {
+      "serverUrl": "http://127.0.0.1:8425/mcp",
+      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+    }
+  }
+}</code></pre></details>
+
+<details><summary>OpenCode — project <code>opencode.json</code></summary>
+<pre><code>{
+  "mcp": {
+    "tdai-memory": {
+      "type": "remote",
+      "url": "http://127.0.0.1:8425/mcp",
+      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+    }
+  }
+}</code></pre></details>
+
+<h3><span class="chip">stdio</span> Fallback — Codex, Grok Build, or anything without HTTP MCP</h3>
+<pre><code>{
+  "mcpServers": {
+    "tdai-memory": {
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
+    }
+  }
+}</code></pre>
+<div class="card warn-box">The wrapper sources its own environment. Do <strong>not</strong> add an <code>env</code> block to the config — a stray <code>TDAI_MCP_HTTP_PORT</code> would flip it into HTTP mode and break stdio.</div>
+<p>Codex uses the same command in <code>~/.codex/config.toml</code> — see <code>examples/codex/config.toml</code>. Per-harness details live in each <code>examples/&lt;harness&gt;/README.md</code>.</p>
+
+<h2 id="step2">3. Step 2 — Teach the agent to use memory (rules)</h2>
+<p>Add this to the harness's rules file — <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, <code>.windsurfrules</code>… Ready-made snippets: <code>examples/rules/</code>.</p>
+<pre><code># TDAI memory (read-only)
+At session start, call `tdai_memory_context` once to load team memory
+before non-trivial work.
+When a task references past decisions or conventions, use
+`tdai_memory_search` (and `tdai_scene_read` for the full scene) before
+re-deriving from scratch.
+Do not write memory yourself. Capture runs automatically at session end
+via a hook, not the model.
+Do not dump memory contents verbatim into files or commits.</code></pre>
+
+<h2 id="step3">4. Step 3 (optional) — Enable the write path</h2>
+<p>Only Claude Code has a SessionEnd hook today. Other harnesses stay read-only, which is fine.</p>
+<pre><code>// .claude/settings.json (project) or ~/.claude/settings.json (global)
+{
+  "hooks": {
+    "SessionEnd": [
+      { "hooks": [ {
+        "type": "command",
+        "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/hooks/tdai-reflect-hook.sh"
+      } ] }
+    ]
+  }
+}</code></pre>
+<ul>
+  <li>The hook is fire-and-forget (always exits 0, runs detached). Log: <code>deploy/global-images/.reflect.log</code>.</li>
+  <li>Sessions shorter than 6 text turns are skipped. Extraction uses the local LLM (LM Studio, <code>127.0.0.1:1234</code>) — it must be running with the model loaded, or the hook logs an error and writes nothing.</li>
+  <li>Writes are idempotent: re-running reflect on the same session never duplicates lessons.</li>
+</ul>
+
+<h2 id="identity">5. The identity model (what the picker is about)</h2>
+<p>Every memory record is isolated by <strong>team / user / agent</strong>. There is no "project" dimension — <strong>one project = one agent</strong>. A session reads exactly one agent's store, chosen once:</p>
+<ol>
+  <li>Token maps to <em>one</em> identity (or declares <code>"default"</code>) → binds silently. Done.</li>
+  <li>Token maps to <em>several</em> identities → the first memory tool call asks the <em>user</em> to pick, via a native dialog (MCP elicitation — Claude Code interactive supports this).</li>
+  <li>Client without elicitation (headless runs, some IDEs) → the tool call returns <code>identity_not_selected</code> with the list; the agent calls <code>tdai_identity_use {"name": "..."}</code> — and should ask the user which one if unclear. Switching mid-session with the same tool is allowed.</li>
+</ol>
+
+<h3>Adding a new agent/project later</h3>
+<ol>
+  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>) → note its <code>agt-…</code> id.</li>
+  <li>Append an identity entry to <code>deploy/global-images/.mcp.bindings.json</code> (template: <code>.mcp.bindings.json.example</code>).</li>
+  <li>Restart the server: <code>./start-memory-mcp.sh</code>. Every harness using the device token sees the new identity immediately — <strong>no harness config changes</strong>.</li>
+</ol>
+
+<h2 id="tools">6. Tool reference</h2>
+<table>
+  <tr><th>Tool</th><th>What it does</th><th>When the agent should call it</th></tr>
+  <tr><td><code>tdai_memory_context</code></td><td>One-shot recall bundle: persona + scene index + top matching atoms.</td><td>Once at session start, before non-trivial work.</td></tr>
+  <tr><td><code>tdai_memory_search</code></td><td>Targeted search over L1 atomic memories (filter by <code>type</code>, time).</td><td>When a task touches past decisions or conventions.</td></tr>
+  <tr><td><code>tdai_conversation_search</code></td><td>Search raw L0 lesson records across sessions.</td><td>When atom-level answers aren't enough and provenance matters.</td></tr>
+  <tr><td><code>tdai_scene_read</code></td><td>Read one L2 scene file by path. Accepts the <code>scene_blocks/</code>-prefixed paths shown in the persona scene index.</td><td>To read the full SOP behind a scene-index entry.</td></tr>
+  <tr><td><code>tdai_identity_list</code> <span class="muted">*</span></td><td>List identities this session may act as, and which is active.</td><td rowspan="2">Only after an <code>identity_not_selected</code> error. <span class="muted">* Present only on multi-identity tokens.</span></td></tr>
+  <tr><td><code>tdai_identity_use</code> <span class="muted">*</span></td><td>Bind the session to one identity by name.</td></tr>
+</table>
+
+<h2 id="troubleshoot">7. Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Cause → fix</th></tr>
+  <tr><td>Connection refused on <code>:8425</code></td><td>Server not running → <code>cd deploy/global-images &amp;&amp; ./start-memory-mcp.sh</code> (also part of <code>start-all.sh</code>). Health check: <code>./start-memory-mcp.sh --status</code>.</td></tr>
+  <tr><td><code>401 unauthorized</code></td><td>Wrong/missing Bearer token → re-read the token from <code>.mcp.env</code> / <code>.mcp.bindings.json</code> (it is regenerated only if deleted).</td></tr>
+  <tr><td><code>identity_not_selected</code> error</td><td>Normal on multi-identity tokens without a default — pick via the dialog, or call <code>tdai_identity_use</code>. Not a failure.</td></tr>
+  <tr><td>Session not found / re-initialize</td><td>The MCP server restarted (sessions are in-memory, 60-min idle expiry) → the client reconnects automatically on the next call.</td></tr>
+  <tr><td>Hook ran but no lessons appear</td><td>Check <code>.reflect.log</code>. "skipped" = session too short or nothing durable (normal). LLM timeout = LM Studio not running/slow — the hook allows 240s by default.</td></tr>
+  <tr><td>stdio server exits immediately</td><td>Missing env → the wrapper needs <code>.mcp.env</code> filled in and MemoryCore running (it falls back to <code>.admin-key</code> for the API key).</td></tr>
+</table>
+
+<div class="card ok-box">
+  <strong>Sanity check for a new setup:</strong> open a fresh session and ask the agent
+  <em>"what do you remember about this team's architecture decisions?"</em> —
+  it should call <code>tdai_memory_context</code> (picking an identity if asked) and answer from memory, not from guesswork.
+</div>
+
+<p class="muted">Source of truth for configs: <code>MemoryMCP/examples/</code> · Server scripts: <code>deploy/global-images/</code> · This file: <code>MemoryMCP/examples/ONBOARDING.html</code></p>
+
+</main>
+</body>
+</html>

@@ -1,8 +1,10 @@
 import type { IdentityConfig } from "./config.js";
 import type { MemoryReadPort } from "./client.js";
 import {
+  parseListLimit,
   parseMaxChars,
   parseMaxItems,
+  parseOffset,
   parseOptionalTime,
   parseOptionalType,
   parseQuery,
@@ -271,6 +273,56 @@ export async function handleTdaiMemoryCapture(
   return { structured, text: jsonText(structured), isError: false };
 }
 
+/** One catalogue row. Descriptions are clipped — the full text is in tdai_skill_get. */
+const SKILL_DESC_PREVIEW = 240;
+
+function toSkillRow(raw: unknown): Record<string, unknown> {
+  const s = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const desc = typeof s.description === "string" ? s.description : "";
+  const clipped = desc.length > SKILL_DESC_PREVIEW;
+  return {
+    skill_id: s.skill_id,
+    name: s.name,
+    description: clipped ? `${desc.slice(0, SKILL_DESC_PREVIEW)}…` : desc,
+    description_clipped: clipped || undefined,
+    version: s.version,
+    owner_agent_id: s.owner_agent_id,
+    status: s.status,
+  };
+}
+
+export async function handleTdaiSkillList(
+  args: Record<string, unknown>,
+  ctx: HandlerContext,
+): Promise<ToolResult> {
+  if (!ctx.config.skillsEnabled || !ctx.memory.listSkills) {
+    return errorResult("skills_disabled", "tdai_skill_list is disabled (set TDAI_ENABLE_SKILLS=true)");
+  }
+  const skillScope = parseSkillScope(args.scope);
+  const limit = parseListLimit(args.limit);
+  const offset = parseOffset(args.offset);
+  const raw = await ctx.memory.listSkills({
+    limit,
+    offset,
+    scope: skillScope === "team" ? "team" : undefined,
+  });
+  const rec = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  const inner = rec.data && typeof rec.data === "object" ? (rec.data as Record<string, unknown>) : rec;
+  const items = Array.isArray(inner.items) ? inner.items : [];
+  const total = typeof inner.total === "number" ? inner.total : items.length;
+  const structured = {
+    scope: "self" as const,
+    skill_scope: skillScope,
+    total,
+    returned: items.length,
+    offset,
+    // A library larger than one page is easy to mistake for the whole catalogue.
+    more: total > offset + items.length ? true : undefined,
+    items: items.map(toSkillRow),
+  };
+  return { structured, text: jsonText(structured), isError: false };
+}
+
 export async function handleTdaiSkillSearch(
   args: Record<string, unknown>,
   ctx: HandlerContext,
@@ -391,6 +443,8 @@ export async function handleToolCall(
         return await handleTdaiSceneRead(body, ctx);
       case "tdai_memory_capture":
         return await handleTdaiMemoryCapture(body, ctx);
+      case "tdai_skill_list":
+        return await handleTdaiSkillList(body, ctx);
       case "tdai_skill_search":
         return await handleTdaiSkillSearch(body, ctx);
       case "tdai_skill_get":

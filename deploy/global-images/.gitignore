@@ -5,6 +5,9 @@
 .memory-core-config/
 .local-llm/
 .mcp.env
+# Hand-made backups of the above carry the same credentials — ignore them too.
+.mcp.env.bak*
+.env.bak*
 .mcp.bindings.json
 .memory-mcp.pid
 .memory-mcp.log

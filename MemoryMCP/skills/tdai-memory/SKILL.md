@@ -20,7 +20,7 @@ Answer from tool results. If tools fail, say so.
 
 ## When to use a Skill
 
-Only if `tdai_skill_search` is listed (host set `TDAI_ENABLE_SKILLS=true`).
+Only if `tdai_skill_list` is listed (host set `TDAI_ENABLE_SKILLS=true`).
 
 A Skill is a reusable SOP the team already proved out — a release checklist, a
 debugging routine, a setup procedure. Prefer an existing Skill over re-deriving
@@ -29,11 +29,15 @@ the procedure yourself.
 Look for one **before starting** any task that sounds routine or repeatable:
 deploys, releases, migrations, incident triage, environment setup, review passes.
 
-1. `tdai_skill_search` with 2–5 keywords from the task. Default scope is this
-   agent's own Skills.
-2. Nothing useful? Retry with `scope: "team"` — that searches every Skill the
-   team shares, across agents. Do this before concluding no Skill exists.
-3. `tdai_skill_get` on the best hit. You get the whole SKILL.md: trigger
+1. `tdai_skill_list` — the catalogue, no query needed. Default scope is this
+   agent's own Skills; `scope: "team"` covers every Skill the team shares.
+   Nothing is injected into your context automatically, so this call is how
+   you learn what exists at all.
+2. `tdai_skill_search` with 2–5 keywords instead, once the library is large
+   enough that listing it is wasteful. It is BM25 over name, description, and
+   body — an empty result means *those words* did not match, not that no Skill
+   applies. Fall back to `tdai_skill_list` before concluding there is none.
+3. `tdai_skill_get` on the best candidate. You get the whole SKILL.md: trigger
    boundaries, steps, validation rules — plus a manifest of attached files.
 4. For each manifest entry you actually need, `tdai_skill_file_read` with its
    `path`. Scripts arrive as text; `chmod +x` after you write one to disk.

@@ -31,6 +31,7 @@ describe("tool schemas", () => {
     );
     expect(listToolDescriptors({ skillsEnabled: true }).map((t) => t.name)).toEqual(
       expect.arrayContaining([
+        "tdai_skill_list",
         "tdai_skill_search",
         "tdai_skill_get",
         "tdai_skill_file_read",

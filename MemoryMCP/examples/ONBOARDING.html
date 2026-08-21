@@ -216,23 +216,25 @@ TDAI_ENABLE_SKILLS=true
 
 # then restart (idempotent)
 ./start-memory-mcp.sh</code></pre>
-<p>Three read-only tools appear. Writes stay in the Panel and MemoryProxy — nothing here can create or modify a Skill.</p>
+<p>Four read-only tools appear. Writes stay in the Panel and MemoryProxy — nothing here can create or modify a Skill.</p>
 <table>
   <tr><th>Tool</th><th>What it does</th></tr>
-  <tr><td><code>tdai_skill_search</code></td><td>Keyword search. Defaults to the active identity's own Skills; <code>scope: "team"</code> drops the owner filter and searches the whole team library.</td></tr>
+  <tr><td><code>tdai_skill_list</code></td><td>The catalogue — no query needed. Same scope rule as search. The agent needs this to learn what exists at all.</td></tr>
+  <tr><td><code>tdai_skill_search</code></td><td>Keyword search (BM25 over name, description, body). Defaults to the active identity's own Skills; <code>scope: "team"</code> drops the owner filter and searches the whole team library.</td></tr>
   <tr><td><code>tdai_skill_get</code></td><td>Full SKILL.md plus a manifest of the files attached to it.</td></tr>
   <tr><td><code>tdai_skill_file_read</code></td><td>One file from that manifest, e.g. <code>scripts/run.sh</code>.</td></tr>
 </table>
 <div class="card warn-box">
   <p><strong>The flag alone is not enough.</strong> Two things about the MCP path routinely surprise people:</p>
   <ul>
+    <li><strong>Nothing enumerates Skills for the agent.</strong> It learns the catalogue only by calling <code>tdai_skill_list</code>; a blind keyword search can miss a Skill worded differently from the task.</li>
     <li><strong>Nothing auto-injects Skills.</strong> MemoryProxy pushes an <code>&lt;available_skills&gt;</code> catalogue into every system prompt; MCP is pull-only. The agent finds a Skill only if it decides to search — so it needs to be told to look.</li>
     <li><strong>Nothing executes a Skill.</strong> It is a procedure the agent carries out with its own tools, not a program that runs itself.</li>
   </ul>
 </div>
 <p>So pair the flag with guidance, the same way Step 2 pairs the transport with rules:</p>
 <ul>
-  <li><strong>Claude Code</strong> — <code>cd deploy/global-images &amp;&amp; ./install-claude-skill.sh</code> installs <code>MemoryMCP/skills/tdai-memory/SKILL.md</code> into <code>~/.claude/skills/</code>. It carries the full workflow (search agent scope → retry <code>scope: "team"</code> → <code>get</code> → read manifest files) and loads on demand, so it costs nothing until relevant. Restart Claude Code afterwards.</li>
+  <li><strong>Claude Code</strong> — <code>cd deploy/global-images &amp;&amp; ./install-claude-skill.sh</code> installs <code>MemoryMCP/skills/tdai-memory/SKILL.md</code> into <code>~/.claude/skills/</code>. It carries the full workflow (<code>list</code> the catalogue → <code>search</code> when it is large → <code>get</code> → read manifest files) and loads on demand, so it costs nothing until relevant. Restart Claude Code afterwards.</li>
   <li><strong>Every other harness</strong> — the Skills paragraph already included in <code>examples/rules/</code>. That format is Claude-Code-only, so for Cursor / Windsurf / Codex / OpenCode the rules file is the <em>only</em> guidance they get.</li>
 </ul>
 <p class="muted">Skip both and the agent still has the tools — it just has to infer from the tool descriptions when to reach for them.</p>
@@ -261,7 +263,8 @@ TDAI_ENABLE_SKILLS=true
   <tr><td><code>tdai_scene_read</code></td><td>Read one L2 scene file by path. Accepts the <code>scene_blocks/</code>-prefixed paths shown in the persona scene index.</td><td>To read the full SOP behind a scene-index entry.</td></tr>
   <tr><td><code>tdai_identity_list</code> <span class="muted">*</span></td><td>List identities this session may act as, and which is active.</td><td rowspan="2">Only after an <code>identity_not_selected</code> error. <span class="muted">* Present only on multi-identity tokens.</span></td></tr>
   <tr><td><code>tdai_identity_use</code> <span class="muted">*</span></td><td>Bind the session to one identity by name.</td></tr>
-  <tr><td><code>tdai_skill_search</code> <span class="muted">†</span></td><td>Find a reusable SOP by keyword. Agent scope by default, <code>scope: "team"</code> for the whole library.</td><td rowspan="3">Before starting anything routine or repeatable, instead of re-deriving the procedure. <span class="muted">† Only when <code>TDAI_ENABLE_SKILLS=true</code> — see section 5.</span></td></tr>
+  <tr><td><code>tdai_skill_list</code> <span class="muted">†</span></td><td>List available SOPs. Agent scope by default, <code>scope: "team"</code> for the whole library.</td><td rowspan="4">Before starting anything routine or repeatable, instead of re-deriving the procedure. <span class="muted">† Only when <code>TDAI_ENABLE_SKILLS=true</code> — see section 5.</span></td></tr>
+  <tr><td><code>tdai_skill_search</code> <span class="muted">†</span></td><td>Keyword search when the library is too big to list. BM25 — an empty result means the words missed, not that no Skill applies.</td></tr>
   <tr><td><code>tdai_skill_get</code> <span class="muted">†</span></td><td>Full SKILL.md + manifest of attached files.</td></tr>
   <tr><td><code>tdai_skill_file_read</code> <span class="muted">†</span></td><td>One resource file from that manifest.</td></tr>
 </table>
@@ -276,7 +279,7 @@ TDAI_ENABLE_SKILLS=true
   <tr><td>Hook ran but no lessons appear</td><td>Check <code>.reflect.log</code>. "skipped" = session too short or nothing durable (normal). LLM timeout = LM Studio not running/slow — the hook allows 240s by default.</td></tr>
   <tr><td>Skill tools missing / <code>skills_disabled</code></td><td><code>TDAI_ENABLE_SKILLS</code> still <code>false</code>, or the server was not restarted after the edit → fix <code>.mcp.env</code>, re-run <code>./start-memory-mcp.sh</code>.</td></tr>
   <tr><td>Skill tools present but the agent never uses them</td><td>Expected — MCP does not auto-inject Skills. Install the Claude Code skill (<code>./install-claude-skill.sh</code>) or paste the Skills paragraph from <code>examples/rules/</code> into the harness's rules file.</td></tr>
-  <tr><td><code>tdai_skill_search</code> returns nothing you can see in the Panel</td><td>Default scope is the active identity's <em>own</em> Skills → retry with <code>scope: "team"</code>. Note the search is BM25 keyword matching, so use words that appear in the Skill's name or description.</td></tr>
+  <tr><td><code>tdai_skill_search</code> returns nothing you can see in the Panel</td><td>Two separate causes: default scope is the active identity's <em>own</em> Skills → retry with <code>scope: "team"</code>; and matching is BM25 keywords → fall back to <code>tdai_skill_list</code>, which needs no query.</td></tr>
   <tr><td>stdio server exits immediately</td><td>Missing env → the wrapper needs <code>.mcp.env</code> filled in and MemoryCore running (it falls back to <code>.admin-key</code> for the API key).</td></tr>
 </table>
 

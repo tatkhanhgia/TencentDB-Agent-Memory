@@ -33,6 +33,7 @@ export interface MemoryReadPort {
   readScenario(path: string): Promise<unknown>;
   readCore(): Promise<unknown>;
   addConversation?(req: ConversationAddInput): Promise<unknown>;
+  listSkills?(req: { limit: number; offset?: number; scope?: "team" }): Promise<unknown>;
   searchSkills?(req: { query: string; limit: number; scope?: "team" }): Promise<unknown>;
   getSkill?(req: { skill_id: string; version?: number }): Promise<unknown>;
   readSkillFile?(req: {
@@ -94,6 +95,19 @@ export function createSdkMemoryPort(cfg: IdentityConfig): MemoryReadPort {
         messages: req.messages,
       });
     },
+    // /v3/skill/list has no `scope` flag — the owner filter is simply
+    // `filters.owner_agent_id ?? agent_id`, so team-wide listing means sending
+    // no agent_id at all. withDefaults({agentId: undefined}) clears the SDK
+    // default for this one call; passing agent_id: undefined per-call would
+    // not (the SDK falls back to its default on nullish overrides).
+    listSkills: skills
+      ? (req) => {
+          const client = req.scope === "team"
+            ? skills.withDefaults({ agentId: undefined })
+            : skills;
+          return client.list({ pagination: { limit: req.limit, offset: req.offset } });
+        }
+      : undefined,
     // `scope: "team"` makes the gateway strip agent_id before searching, so
     // the whole team library is in range instead of only this agent's own
     // skills. Omitted (the default) keeps the agent-scoped owner filter.

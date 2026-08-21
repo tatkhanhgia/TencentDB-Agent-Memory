@@ -7,6 +7,7 @@ export const TOOL_NAMES = [
 
 export const OPTIONAL_TOOL_NAMES = [
   "tdai_memory_capture",
+  "tdai_skill_list",
   "tdai_skill_search",
   "tdai_skill_get",
   "tdai_skill_file_read",
@@ -152,11 +153,42 @@ export const CAPTURE_TOOL: ToolDef = {
   },
 };
 
+const SKILL_SCOPE_PROP = {
+  type: "string",
+  enum: ["agent", "team"],
+  description:
+    "\"agent\" (default) covers Skills owned by the active identity. \"team\" drops the owner filter and covers the whole team library.",
+};
+
 export const SKILL_TOOLS: ToolDef[] = [
+  {
+    name: "tdai_skill_list",
+    description:
+      "List available Skills — reusable SOPs distilled from past work — without needing a search query. Call this first to see what exists; keyword search can miss a Skill whose wording differs from the task. Descriptions are shortened here; read one in full with tdai_skill_get.",
+    inputSchema: {
+      type: "object",
+      additionalProperties: false,
+      required: [],
+      properties: {
+        scope: SKILL_SCOPE_PROP,
+        limit: {
+          type: "integer",
+          minimum: 1,
+          maximum: 50,
+          description: "Max Skills to return (1–50, default 20).",
+        },
+        offset: {
+          type: "integer",
+          minimum: 0,
+          description: "Skip this many entries — for paging through a large library.",
+        },
+      },
+    },
+  },
   {
     name: "tdai_skill_search",
     description:
-      "Search Skills (read-only) — reusable SOPs distilled from past work. Defaults to Skills owned by the active identity; pass scope=\"team\" to search every Skill shared with the team, across agents.",
+      "Keyword search over Skills (read-only). Matching is BM25 over name, description, and body, so wording matters — when a search comes back empty, use tdai_skill_list before concluding no Skill exists.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -164,12 +196,7 @@ export const SKILL_TOOLS: ToolDef[] = [
       properties: {
         query: QUERY_PROP,
         limit: LIMIT_PROP,
-        scope: {
-          type: "string",
-          enum: ["agent", "team"],
-          description:
-            "\"agent\" (default) searches Skills owned by the active identity. \"team\" drops the owner filter and searches the whole team library — use it when the agent-scoped search returns nothing.",
-        },
+        scope: SKILL_SCOPE_PROP,
       },
     },
   },

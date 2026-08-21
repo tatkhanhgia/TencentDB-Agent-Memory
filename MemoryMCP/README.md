@@ -17,11 +17,12 @@ Identity is frozen from the environment at process start. Tool arguments cannot 
 
 Optional write (P1): set `TDAI_ENABLE_CAPTURE=true` to advertise `tdai_memory_capture`. Default is read-only. Capture is one incremental turn + `capture_id` (idempotent on Core) + `conversation_ref`.
 
-Optional Skills (P2): set `TDAI_ENABLE_SKILLS=true` for `tdai_skill_search` / `tdai_skill_get` / `tdai_skill_file_read`. Policy text: `skills/tdai-memory/SKILL.md`.
+Optional Skills (P2): set `TDAI_ENABLE_SKILLS=true` for `tdai_skill_list` / `tdai_skill_search` / `tdai_skill_get` / `tdai_skill_file_read`. Policy text: `skills/tdai-memory/SKILL.md`.
 
 | Name | Purpose |
 | --- | --- |
-| `tdai_skill_search` | Keyword search. Defaults to the active identity's own Skills; `scope: "team"` drops the owner filter and searches the whole team library. |
+| `tdai_skill_list` | The catalogue — no query needed. Same scope rule. Use it first, and whenever a search comes back empty. |
+| `tdai_skill_search` | Keyword search (BM25 over name/description/body). Defaults to the active identity's own Skills; `scope: "team"` drops the owner filter and searches the whole team library. |
 | `tdai_skill_get` | Full SKILL.md + resource manifest for one skill (optionally a historical `version`). |
 | `tdai_skill_file_read` | One resource file from the manifest, e.g. `scripts/run.sh`. Content is truncated to `max_chars` (`size_bytes` still reports the real size). |
 

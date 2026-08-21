@@ -67,6 +67,28 @@ export function parseSkillScope(raw: unknown): "agent" | "team" {
   throw new LimitError('scope must be "agent" or "team"');
 }
 
+export const DEFAULT_LIST_LIMIT = 20;
+export const ABS_LIST_LIMIT = 50;
+
+/** Catalogue listing tolerates a bigger page than a relevance-ranked search. */
+export function parseListLimit(raw: unknown, fallback = DEFAULT_LIST_LIMIT): number {
+  if (raw === undefined || raw === null || raw === "") return fallback;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > ABS_LIST_LIMIT) {
+    throw new LimitError(`limit must be an integer 1–${ABS_LIST_LIMIT}`);
+  }
+  return n;
+}
+
+export function parseOffset(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === "") return 0;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n < 0) {
+    throw new LimitError("offset must be a non-negative integer");
+  }
+  return n;
+}
+
 export function parseSkillVersion(raw: unknown): number | undefined {
   if (raw === undefined || raw === null || raw === "") return undefined;
   const n = typeof raw === "number" ? raw : Number(raw);

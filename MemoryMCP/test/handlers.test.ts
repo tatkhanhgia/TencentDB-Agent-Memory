@@ -38,6 +38,7 @@ function port(partial: Partial<MemoryReadPort>): MemoryReadPort {
     readCore: partial.readCore ?? missing,
     addConversation: partial.addConversation,
     recallBundle: partial.recallBundle,
+    listSkills: partial.listSkills,
     searchSkills: partial.searchSkills,
     getSkill: partial.getSkill,
     readSkillFile: partial.readSkillFile,
@@ -197,6 +198,76 @@ describe("handleToolCall", () => {
     );
     expect(result.isError).toBe(true);
     expect(String(result.structured.message)).toMatch(/path/i);
+  });
+
+  it("lists the skill catalogue, clipping descriptions and flagging more pages", async () => {
+    const seen: Array<Record<string, unknown>> = [];
+    const result = await handleToolCall(
+      "tdai_skill_list",
+      { limit: 2 },
+      {
+        config: skillConfig,
+        memory: port({
+          listSkills: async (req) => {
+            seen.push({ ...req });
+            return {
+              data: {
+                total: 7,
+                items: [
+                  { skill_id: "skl-1", name: "release-checklist", description: "x".repeat(300), version: 3, owner_agent_id: "agt-a", status: "active" },
+                  { skill_id: "skl-2", name: "incident-triage", description: "short one", version: 1, owner_agent_id: "agt-b", status: "active" },
+                ],
+              },
+            };
+          },
+        }),
+      },
+    );
+    expect(result.isError).toBe(false);
+    expect(result.structured.skill_scope).toBe("agent");
+    expect(result.structured.total).toBe(7);
+    expect(result.structured.returned).toBe(2);
+    expect(result.structured.more).toBe(true);
+    expect(seen[0]).toEqual({ limit: 2, offset: 0, scope: undefined });
+
+    const items = result.structured.items as Array<Record<string, unknown>>;
+    expect(items[0]?.name).toBe("release-checklist");
+    // 240-char preview + the ellipsis marker.
+    expect(String(items[0]?.description)).toHaveLength(241);
+    expect(items[0]?.description_clipped).toBe(true);
+    expect(items[1]?.description).toBe("short one");
+    expect(items[1]?.description_clipped).toBeUndefined();
+  });
+
+  it("passes scope=team and offset straight through when listing", async () => {
+    let seen: Record<string, unknown> | undefined;
+    const result = await handleToolCall(
+      "tdai_skill_list",
+      { scope: "team", offset: 20, limit: 5 },
+      {
+        config: skillConfig,
+        memory: port({
+          listSkills: async (req) => {
+            seen = { ...req };
+            return { items: [], total: 20 };
+          },
+        }),
+      },
+    );
+    expect(result.isError).toBe(false);
+    expect(seen).toEqual({ limit: 5, offset: 20, scope: "team" });
+    // Nothing beyond this page — `more` stays absent rather than false.
+    expect(result.structured.more).toBeUndefined();
+  });
+
+  it("rejects an out-of-range list limit", async () => {
+    const result = await handleToolCall(
+      "tdai_skill_list",
+      { limit: 500 },
+      { config: skillConfig, memory: port({ listSkills: async () => ({ items: [], total: 0 }) }) },
+    );
+    expect(result.isError).toBe(true);
+    expect(String(result.structured.message)).toMatch(/limit/i);
   });
 
   it("keeps skill search agent-scoped by default and widens only on scope=team", async () => {

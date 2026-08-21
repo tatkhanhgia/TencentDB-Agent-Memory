@@ -196,32 +196,38 @@ gateway_endpoint）就把 `MEMORY_HUB_PROXY_PUBLIC_URL` 显式设为空字符串
 读路径走 MemoryMCP（4 个只读工具），写路径走 session 结束钩子（见下节），互不干扰。
 
 ```bash
-# 1) 准备 identity（单一事实来源，gitignored）
+# 准备默认 identity（单一事实来源，gitignored）
 cp .mcp.env.example .mcp.env   # 填 TDAI_TEAM_ID / TDAI_AGENT_ID / TDAI_USER_ID
                                # TDAI_API_KEY 留空则自动回落 .admin-key
-
-# 2) 启动 Streamable HTTP MCP（首跑自动生成 TDAI_MCP_TOKEN 写回 .mcp.env）
-./start-memory-mcp.sh          # → http://127.0.0.1:8425/mcp
-./start-memory-mcp.sh --status # 健康检查
 ```
 
-harness 侧二选一：
+harness 侧统一走 **stdio wrapper**：`command` 指向本目录 `tdai-memory-mcp.sh`。
+env 由 wrapper 自己加载（harness 配置里不需要 env 块），并按 project 自动解析
+identity（与写钩子共用 `_identity.sh`，读写永远落到同一个 agent）：
 
-- **HTTP（推荐）**：URL `http://127.0.0.1:8425/mcp` + `Authorization: Bearer $TDAI_MCP_TOKEN`。
-  token 在服务端映射到 team/agent/user，Core API key 不下发到客户端。
-- **stdio 兜底**：`command` 指向本目录 `tdai-memory-mcp.sh`（env 由 wrapper 自己加载，
-  harness 配置里不需要 env 块）。
+1. project 根目录的 `.tdai-project.env`（显式覆盖，`TDAI_AGENT_ID=agt-…`）；
+2. Panel registry 里名字与 project 文件夹同名的 active agent（零配置约定）；
+3. `.mcp.env` 里的机器默认 agent。
+
+解析结果打到 stderr（`identity route=… agent=…`），最终 agent id 会对 registry
+校验，指向已删除/停用 agent 时会告警而不是静默绑定。identity 在进程启动时定死，
+改了 `.tdai-project.env` 或 Panel 里的 agent 后需要新开 session。
+
+**HTTP 模式（遗留，按需）**：`./start-memory-mcp.sh` 手动启动 `:8425`
+（`start-all.sh` 默认不再带起，需要 `MCP_HTTP=1`），Bearer device token 映射
+多 identity + 会话内选择器（`tdai_identity_list/use`）——仅在 stdio 走不通
+（如远程接入）时使用。
 
 各 harness 配置样例与 agent 规则片段：`MemoryMCP/examples/`（含 `examples/rules/`）。
-`start-all.sh` 会在第 4 步自动带起 MCP（`MCP_HTTP=0` 跳过）；`stop-all.sh` 同步停掉。
 
 ### Skill 工具（可选）
 
 Skill 是"跑通过的 SOP"，与 memory 是两类资产。默认关闭，开启需要**两件事**，缺一不可：
 
 ```bash
-# 1) 开工具：.mcp.env 里设 TDAI_ENABLE_SKILLS=true，然后重启（幂等）
-./start-memory-mcp.sh
+# 1) 开工具：.mcp.env 里设 TDAI_ENABLE_SKILLS=true
+#    stdio wrapper 每次 session 启动都读 .mcp.env，新开 session 即生效
+#    （遗留 HTTP 模式才需要 ./start-memory-mcp.sh 重启）
 
 # 2) 教 agent 什么时候去找 —— MCP 不会自动注入 skill 目录
 ./install-claude-skill.sh      # Claude Code：装 SKILL.md 进 ~/.claude/skills/

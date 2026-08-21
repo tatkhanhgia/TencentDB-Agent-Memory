@@ -2,9 +2,7 @@
 
 Copy `mcp_config.json` to **`~/.codeium/windsurf/mcp_config.json`**.
 
-**HTTP (preferred).** The JSON file uses Windsurf's `serverUrl` field pointing at `http://127.0.0.1:8425/mcp`. Auth header support is not confirmed for every Windsurf version; if your build accepts `headers`, add `"Authorization": "Bearer tok-local-dev"` (replace with a real `TDAI_MCP_TOKEN`). Do not invent other fields.
-
-**Stdio fallback.** If HTTP is unavailable, use the wrapper as `command`. The wrapper sources env internally — do not add an `env` block:
+**Stdio (standard).** The JSON file points `command` at the wrapper. The wrapper sources env internally (it also finds `node` when GUI-launched Windsurf lacks a shell PATH) and resolves the per-project identity (`.tdai-project.env` → folder-name ↔ Panel agent → machine default) — do **not** add an `env` block:
 
 ```json
 {
@@ -15,3 +13,5 @@ Copy `mcp_config.json` to **`~/.codeium/windsurf/mcp_config.json`**.
   }
 }
 ```
+
+**HTTP (legacy, opt-in).** Only if you deliberately run the `:8425` daemon (`./start-memory-mcp.sh`; not started by default): `serverUrl` `http://127.0.0.1:8425/mcp`; add `headers` with `Authorization: Bearer <device token>` if your Windsurf build supports it. Do not invent other fields.

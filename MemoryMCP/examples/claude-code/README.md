@@ -1,10 +1,8 @@
 # Claude Code — tdai-memory
 
-Drop this directory's `mcp.json` at the **project root as `.mcp.json`**.
+Drop this directory's `mcp.json` at the **project root as `.mcp.json`**, or add the same block to `~/.claude.json` (`mcpServers`) for user scope — one config for every project on this machine (the wrapper resolves each project's identity itself).
 
-**HTTP (preferred).** The JSON file is the HTTP variant: Streamable HTTP at `http://127.0.0.1:8425/mcp` with `Authorization: Bearer tok-local-dev`. Replace the placeholder with a real `TDAI_MCP_TOKEN`.
-
-**Stdio fallback.** If HTTP is unavailable, use the wrapper as `command`. The wrapper sources env internally — do not add an `env` block:
+**Stdio (standard).** The JSON file points `command` at the wrapper. The wrapper sources env internally and resolves the per-project identity (`.tdai-project.env` → folder-name ↔ Panel agent → machine default) — do **not** add an `env` block:
 
 ```json
 {
@@ -15,3 +13,5 @@ Drop this directory's `mcp.json` at the **project root as `.mcp.json`**.
   }
 }
 ```
+
+**HTTP (legacy, opt-in).** Only if you deliberately run the `:8425` daemon (`./start-memory-mcp.sh`; not started by default): `type: "http"`, `url: "http://127.0.0.1:8425/mcp"`, `Authorization: Bearer <device token from .mcp.bindings.json>`.

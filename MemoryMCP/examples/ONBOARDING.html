@@ -76,7 +76,7 @@
 
 <div class="card vn">
   <strong>🇻🇳 Tóm tắt nhanh:</strong> Kết nối harness vào memory chỉ cần <strong>3 bước</strong> —
-  (1) trỏ MCP vào <code>http://127.0.0.1:8425/mcp</code> với token,
+  (1) trỏ MCP <code>command</code> vào wrapper stdio <code>tdai-memory-mcp.sh</code> (không token, không port; identity tự chọn theo project),
   (2) thêm rules dạy agent gọi <code>tdai_memory_context</code> đầu session,
   (3) (tuỳ chọn, chỉ Claude Code) gắn hook SessionEnd để tự đúc bài học khi đóng session.
   Memory là <strong>read-only qua MCP</strong> — agent không bao giờ tự ghi.
@@ -86,14 +86,14 @@
 <h2 id="architecture">1. Architecture in 30 seconds</h2>
 
 <div class="flow">                       READ (live, every session)
-┌─────────────┐   MCP Streamable HTTP    ┌──────────────────┐      ┌─────────────┐
-│   Harness    │ ───────────────────────▶ │  MemoryMCP :8425 │ ───▶ │ MemoryCore   │
-│ (any agent)  │   Bearer token            │  read-only tools │      │ :8420        │
-└─────────────┘                            └──────────────────┘      │ L0→L1→L2→L3 │
+┌─────────────┐   MCP stdio wrapper       ┌──────────────────┐      ┌─────────────┐
+│   Harness    │ ───────────────────────▶ │  MemoryMCP        │ ───▶ │ MemoryCore   │
+│ (any agent)  │   per-project identity    │  read-only tools │      │ :8420        │
+└─────────────┘   (_identity.sh)           └──────────────────┘      │ L0→L1→L2→L3 │
       │                                                              └─────────────┘
       │                WRITE (only at session end, only via hook)          ▲
       └── SessionEnd hook ──▶ tdai-reflect CLI ── extracts ≤3 lessons ─────┘
-                              (writing nothing is the normal outcome)</div>
+          (same _identity.sh routing;  writing nothing is the normal outcome)</div>
 
 <ul>
   <li><strong>Reads</strong> go through a read-only MCP server. Four tools, nothing can mutate memory.</li>
@@ -103,27 +103,14 @@
 
 <h2 id="step1">2. Step 1 — Point your harness at the MCP server</h2>
 
-<h3>Get the device token</h3>
-<p>There is exactly one kind of token: a <strong>device token</strong>, declared in <code>deploy/global-images/.mcp.bindings.json</code> (bootstrapped automatically on first <code>./start-memory-mcp.sh</code> run, and printed by that script). By default a token declares <code>"identities": "registry"</code> — the identity list resolves <em>live</em> from the Panel agent registry, one identity per agent/project. A static <code>identities: [...]</code> array pins the list instead. Per session:</p>
-<ul>
-  <li><strong>Several identities, no <code>"default"</code></strong> → the first memory tool call of a session shows the user a native picker (MCP elicitation). Clients without elicitation get the <code>tdai_identity_use</code> fallback tool instead.</li>
-  <li><strong><code>"suggested": "&lt;name&gt;"</code></strong> → that identity comes preselected in the picker, so accepting the usual choice is a single Enter (you are still asked).</li>
-  <li><strong>One identity, or <code>"default"</code> declared</strong> → the session binds silently, nothing to pick.</li>
-</ul>
-<p>Adding an agent/project later means editing this one server-side file — harness configs never change. (Single-purpose tokens hard-bound in <code>.mcp.env</code> were removed: coding harnesses serve many projects, so a fixed binding is wrong by default.)</p>
-<div class="card warn-box"><strong>Two things agents often miss:</strong>
-(1) MCP configs are read at <em>session start</em> — after writing the config, the current session cannot use it; open a new session.
-(2) A brand-new <em>long-lived</em> project should usually get <em>its own agent</em> (see §5 "Adding a new agent/project") instead of piggybacking on an existing identity; reusing the device token's existing identities is for shared/personal machine-wide memory.</div>
+<h3><span class="chip">stdio</span> The standard transport — every harness</h3>
+<p>One config for everything: point the MCP <code>command</code> at the stdio wrapper. No token, no port, no daemon to keep alive — the wrapper sources its environment from <code>deploy/global-images/.mcp.env</code> and picks the right memory identity for the project it is launched in (see the box below).</p>
 
-<h3><span class="chip">HTTP</span> Preferred transport — works for Claude Code, Cursor, Windsurf, OpenCode</h3>
-
-<p><strong>Claude Code</strong> — project <code>.mcp.json</code> (preferred when the setup belongs to one repo), or <code>~/.claude.json</code> user-scope (one config for every project on this machine):</p>
+<p><strong>Claude Code</strong> — project <code>.mcp.json</code>, or <code>~/.claude.json</code> user-scope (one config for every project on this machine; the wrapper re-resolves identity per project anyway):</p>
 <pre><code>{
   "mcpServers": {
     "tdai-memory": {
-      "type": "http",
-      "url": "http://127.0.0.1:8425/mcp",
-      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
     }
   }
 }</code></pre>
@@ -132,8 +119,7 @@
 <pre><code>{
   "mcpServers": {
     "tdai-memory": {
-      "url": "http://127.0.0.1:8425/mcp",
-      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
     }
   }
 }</code></pre></details>
@@ -142,8 +128,7 @@
 <pre><code>{
   "mcpServers": {
     "tdai-memory": {
-      "serverUrl": "http://127.0.0.1:8425/mcp",
-      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
     }
   }
 }</code></pre></details>
@@ -152,23 +137,31 @@
 <pre><code>{
   "mcp": {
     "tdai-memory": {
-      "type": "remote",
-      "url": "http://127.0.0.1:8425/mcp",
-      "headers": { "Authorization": "Bearer &lt;token-from-file&gt;" }
+      "type": "local",
+      "command": [
+        "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
+      ]
     }
   }
 }</code></pre></details>
 
-<h3><span class="chip">stdio</span> Fallback — Codex, Grok Build, or anything without HTTP MCP</h3>
-<pre><code>{
-  "mcpServers": {
-    "tdai-memory": {
-      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
-    }
-  }
-}</code></pre>
-<div class="card warn-box">The wrapper sources its own environment. Do <strong>not</strong> add an <code>env</code> block to the config — a stray <code>TDAI_MCP_HTTP_PORT</code> would flip it into HTTP mode and break stdio.</div>
 <p>Codex uses the same command in <code>~/.codex/config.toml</code> — see <code>examples/codex/config.toml</code>. Per-harness details live in each <code>examples/&lt;harness&gt;/README.md</code>.</p>
+<div class="card warn-box">The wrapper sources its own environment. Do <strong>not</strong> add an <code>env</code> block to the config — a stray <code>TDAI_MCP_HTTP_PORT</code> would flip it into HTTP mode and break stdio.</div>
+
+<h3>How the identity is chosen (automatic, per project)</h3>
+<p>One project = one agent. At startup the wrapper resolves the identity for its working directory with <code>deploy/global-images/_identity.sh</code> — the <strong>same resolution the write hook uses</strong>, so a session always recalls the store its lessons are written to:</p>
+<ol>
+  <li><code>.tdai-project.env</code> at the project root — explicit override (<code>TDAI_AGENT_ID=agt-…</code>; write it by hand with the agent id from the Panel, or run <code>sync-memory-identities.sh --link &lt;project-dir&gt; &lt;agent-name&gt;</code>).</li>
+  <li><strong>Folder-name convention (zero setup)</strong> — an active Panel registry agent whose slugged name matches the project folder name. Name the agent after the folder and reads and writes both route themselves.</li>
+  <li>The machine default from <code>.mcp.env</code>.</li>
+</ol>
+<p>The chosen route is logged to stderr (<code>identity route=… agent=…</code>), and the final agent id is validated against the registry — a stale <code>.tdai-project.env</code> warns instead of silently binding to a dead agent.</p>
+<div class="card warn-box"><strong>Two things agents often miss:</strong>
+(1) MCP configs and identity are read at <em>session start</em> — after writing the config or <code>.tdai-project.env</code>, the current session cannot use it; open a new session (or reconnect MCP).
+(2) A brand-new <em>long-lived</em> project should usually get <em>its own agent</em> (see "Adding a new agent/project" in §6) instead of piggybacking on the machine default.</div>
+
+<h3><span class="chip">HTTP</span> Legacy, opt-in — remote access / in-session identity picker</h3>
+<p>A Streamable HTTP daemon (<code>:8425</code>, Bearer <strong>device token</strong> from <code>.mcp.bindings.json</code>, in-session picker via <code>tdai_identity_list</code>/<code>tdai_identity_use</code>) still exists but no longer starts by default — run <code>./start-memory-mcp.sh</code> (or <code>MCP_HTTP=1 ./start-all.sh</code>) only when stdio genuinely cannot work, e.g. a harness on another machine.</p>
 
 <h2 id="step2">3. Step 2 — Teach the agent to use memory (rules)</h2>
 <p><strong>Append</strong> this to the harness's rules file (never replace existing rules) — <code>CLAUDE.md</code>, <code>AGENTS.md</code>, <code>.cursorrules</code>, <code>.windsurfrules</code>… Ready-made snippets: <code>examples/rules/</code>.</p>
@@ -199,23 +192,15 @@ Do not dump memory contents verbatim into files or commits.</code></pre>
   <li>The hook is fire-and-forget (always exits 0, runs detached). Log: <code>deploy/global-images/.reflect.log</code>.</li>
   <li>Sessions shorter than 6 text turns are skipped. Extraction uses the local LLM (LM Studio, <code>127.0.0.1:1234</code>) — it must be running with the model loaded, or the hook logs an error and writes nothing.</li>
   <li>Writes are idempotent: re-running reflect on the same session never duplicates lessons.</li>
-  <li><strong>Per-project write identity</strong> — resolved automatically, in priority order:
-    <ol>
-      <li><code>.tdai-project.env</code> at the project root (explicit override; <code>sync-memory-identities.sh --link</code> writes it, or any agent can from the <code>write_routing</code> info returned by <code>tdai_identity_use</code>).</li>
-      <li><strong>Folder-name convention (zero setup):</strong> an active registry agent whose slugged name matches the project folder name — <em>name the Panel agent after the project folder and writes route themselves</em>.</li>
-      <li>The machine default agent from <code>.mcp.env</code>.</li>
-    </ol>
-    Reads follow the session's picker choice; writes follow this resolution. The <code>.reflect.log</code> line shows which route was used (<code>route=file|folder-name:…|default</code>).</li>
+  <li><strong>Per-project write identity</strong> — the hook calls the same <code>_identity.sh</code> resolution as the stdio wrapper (§2): <code>.tdai-project.env</code> → folder-name ↔ registry agent → machine default. Reads and writes therefore always land on the same agent. The <code>.reflect.log</code> line shows which route was used (<code>route=file|folder-name:…|default</code>).</li>
 </ul>
 
 <h2 id="skills">5. Step 4 (optional) — Skills</h2>
 <p>Skills are a <strong>different asset from memory</strong>: reusable SOPs the team already proved out — a release checklist, a debugging routine, a setup procedure — each with versions, resource files, trigger boundaries, and validation rules. Memory tells the agent <em>what the team knows</em>; a Skill tells it <em>how the team does this</em>.</p>
-<p>Off by default. Two edits turn it on:</p>
+<p>Off by default. One edit turns it on:</p>
 <pre><code># deploy/global-images/.mcp.env
-TDAI_ENABLE_SKILLS=true
-
-# then restart (idempotent)
-./start-memory-mcp.sh</code></pre>
+TDAI_ENABLE_SKILLS=true</code></pre>
+<p class="muted">Stdio wrappers read <code>.mcp.env</code> at launch, so just open a new session (reconnect MCP). Only the legacy HTTP daemon needs an explicit restart (<code>./start-memory-mcp.sh</code>).</p>
 <p>Four read-only tools appear. Writes stay in the Panel and MemoryProxy — nothing here can create or modify a Skill.</p>
 <table>
   <tr><th>Tool</th><th>What it does</th></tr>
@@ -239,19 +224,15 @@ TDAI_ENABLE_SKILLS=true
 </ul>
 <p class="muted">Skip both and the agent still has the tools — it just has to infer from the tool descriptions when to reach for them.</p>
 
-<h2 id="identity">6. The identity model (what the picker is about)</h2>
-<p>Every memory record is isolated by <strong>team / user / agent</strong>. There is no "project" dimension — <strong>one project = one agent</strong>. A session reads exactly one agent's store, chosen once:</p>
-<ol>
-  <li>Token maps to <em>one</em> identity (or declares <code>"default"</code>) → binds silently. Done.</li>
-  <li>Token maps to <em>several</em> identities → the first memory tool call asks the <em>user</em> to pick, via a native dialog (MCP elicitation — Claude Code interactive supports this).</li>
-  <li>Client without elicitation (headless runs, some IDEs) → the tool call returns <code>identity_not_selected</code> with the list; the agent calls <code>tdai_identity_use {"name": "..."}</code> — and should ask the user which one if unclear. Switching mid-session with the same tool is allowed.</li>
-</ol>
+<h2 id="identity">6. The identity model</h2>
+<p>Every memory record is isolated by <strong>team / user / agent</strong>. There is no "project" dimension — <strong>one project = one agent</strong>. A session reads exactly one agent's store, resolved automatically at server startup from the project directory (§2: <code>.tdai-project.env</code> → folder-name ↔ registry agent → machine default). The Panel agent registry is the single source of truth; the resolved id is validated against it.</p>
+<p class="muted">The in-session picker (<code>tdai_identity_list</code> / <code>tdai_identity_use</code>, MCP elicitation) exists only in the legacy HTTP mode — on stdio there is nothing to pick.</p>
 
 <h3>Adding a new agent/project later</h3>
 <ol>
-  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>) — <strong>that's it for reads</strong>: with <code>"identities": "registry"</code> the new agent appears in every harness's picker within ~30 seconds (registry cache TTL). No commands, no config changes.</li>
-  <li>To also <em>write</em> that project's lessons into its own store, run <code>deploy/global-images/sync-memory-identities.sh --link &lt;project-dir&gt; &lt;agent-name&gt;</code> once — it writes the project's <code>.tdai-project.env</code> (see the write path below).</li>
-  <li>Static-list bindings only: run <code>sync-memory-identities.sh</code> (optionally <code>--prune</code>) to pull the registry into the pinned list.</li>
+  <li>Create the agent in the Panel (<code>http://127.0.0.1:8125</code>), <strong>named after the project folder</strong> — that's it: the next session in that folder reads <em>and</em> writes that agent's store. No commands, no config changes.</li>
+  <li>If the folder name can't match the agent name, run <code>deploy/global-images/sync-memory-identities.sh --link &lt;project-dir&gt; &lt;agent-name&gt;</code> once — it writes the project's <code>.tdai-project.env</code> (or write that file by hand: <code>TDAI_AGENT_ID=agt-…</code>).</li>
+  <li>Reconnect the MCP server (new session) — identity is resolved at startup.</li>
 </ol>
 
 <h2 id="tools">7. Tool reference</h2>
@@ -261,7 +242,7 @@ TDAI_ENABLE_SKILLS=true
   <tr><td><code>tdai_memory_search</code></td><td>Targeted search over L1 atomic memories (filter by <code>type</code>, time).</td><td>When a task touches past decisions or conventions.</td></tr>
   <tr><td><code>tdai_conversation_search</code></td><td>Search raw L0 lesson records across sessions.</td><td>When atom-level answers aren't enough and provenance matters.</td></tr>
   <tr><td><code>tdai_scene_read</code></td><td>Read one L2 scene file by path. Accepts the <code>scene_blocks/</code>-prefixed paths shown in the persona scene index.</td><td>To read the full SOP behind a scene-index entry.</td></tr>
-  <tr><td><code>tdai_identity_list</code> <span class="muted">*</span></td><td>List identities this session may act as, and which is active.</td><td rowspan="2">Only after an <code>identity_not_selected</code> error. <span class="muted">* Present only on multi-identity tokens.</span></td></tr>
+  <tr><td><code>tdai_identity_list</code> <span class="muted">*</span></td><td>List identities this session may act as, and which is active.</td><td rowspan="2">Only after an <code>identity_not_selected</code> error. <span class="muted">* Legacy HTTP mode only (multi-identity device tokens) — absent on stdio, where identity is automatic.</span></td></tr>
   <tr><td><code>tdai_identity_use</code> <span class="muted">*</span></td><td>Bind the session to one identity by name.</td></tr>
   <tr><td><code>tdai_skill_list</code> <span class="muted">†</span></td><td>List available SOPs. Agent scope by default, <code>scope: "team"</code> for the whole library.</td><td rowspan="4">Before starting anything routine or repeatable, instead of re-deriving the procedure. <span class="muted">† Only when <code>TDAI_ENABLE_SKILLS=true</code> — see section 5.</span></td></tr>
   <tr><td><code>tdai_skill_search</code> <span class="muted">†</span></td><td>Keyword search when the library is too big to list. BM25 — an empty result means the words missed, not that no Skill applies.</td></tr>
@@ -272,12 +253,14 @@ TDAI_ENABLE_SKILLS=true
 <h2 id="troubleshoot">8. Troubleshooting</h2>
 <table>
   <tr><th>Symptom</th><th>Cause → fix</th></tr>
-  <tr><td>Connection refused on <code>:8425</code></td><td>Server not running → <code>cd deploy/global-images &amp;&amp; ./start-memory-mcp.sh</code> (also part of <code>start-all.sh</code>). Health check: <code>./start-memory-mcp.sh --status</code>.</td></tr>
-  <tr><td><code>401 unauthorized</code></td><td>Wrong/missing Bearer token → re-read the token from <code>.mcp.env</code> / <code>.mcp.bindings.json</code> (it is regenerated only if deleted).</td></tr>
-  <tr><td><code>identity_not_selected</code> error</td><td>Normal on multi-identity tokens without a default — pick via the dialog, or call <code>tdai_identity_use</code>. Not a failure.</td></tr>
+  <tr><td>Session reads the wrong agent's memory</td><td>Check the wrapper's stderr line <code>identity route=… agent=…</code> (and <code>.reflect.log</code> for the write side). Wrong route → add/fix <code>.tdai-project.env</code> or rename the Panel agent to match the folder, then open a new session — identity is resolved at startup.</td></tr>
+  <tr><td><code>[tdai-identity] warning: … not found / not active</code></td><td>The resolved agent id is stale — the Panel agent was deleted, archived, or the <code>.tdai-project.env</code> id is wrong → fix the file or restore the agent.</td></tr>
+  <tr><td>Connection refused on <code>:8425</code> <span class="muted">(legacy HTTP)</span></td><td>The HTTP daemon no longer starts by default → use the stdio wrapper, or run <code>./start-memory-mcp.sh</code> deliberately (<code>--status</code> for health).</td></tr>
+  <tr><td><code>401 unauthorized</code> <span class="muted">(legacy HTTP)</span></td><td>Wrong/missing Bearer token → re-read the device token from <code>.mcp.bindings.json</code>.</td></tr>
+  <tr><td><code>identity_not_selected</code> error <span class="muted">(legacy HTTP)</span></td><td>Normal on multi-identity tokens without a default — pick via the dialog, or call <code>tdai_identity_use</code>. Not a failure.</td></tr>
   <tr><td>Session not found / re-initialize</td><td>The MCP server restarted (sessions are in-memory, 60-min idle expiry) → the client reconnects automatically on the next call.</td></tr>
   <tr><td>Hook ran but no lessons appear</td><td>Check <code>.reflect.log</code>. "skipped" = session too short or nothing durable (normal). LLM timeout = LM Studio not running/slow — the hook allows 240s by default.</td></tr>
-  <tr><td>Skill tools missing / <code>skills_disabled</code></td><td><code>TDAI_ENABLE_SKILLS</code> still <code>false</code>, or the server was not restarted after the edit → fix <code>.mcp.env</code>, re-run <code>./start-memory-mcp.sh</code>.</td></tr>
+  <tr><td>Skill tools missing / <code>skills_disabled</code></td><td><code>TDAI_ENABLE_SKILLS</code> still <code>false</code>, or the session predates the edit → fix <code>.mcp.env</code>, open a new session (legacy HTTP: re-run <code>./start-memory-mcp.sh</code>).</td></tr>
   <tr><td>Skill tools present but the agent never uses them</td><td>Expected — MCP does not auto-inject Skills. Install the Claude Code skill (<code>./install-claude-skill.sh</code>) or paste the Skills paragraph from <code>examples/rules/</code> into the harness's rules file.</td></tr>
   <tr><td><code>tdai_skill_search</code> returns nothing you can see in the Panel</td><td>Two separate causes: default scope is the active identity's <em>own</em> Skills → retry with <code>scope: "team"</code>; and matching is BM25 keywords → fall back to <code>tdai_skill_list</code>, which needs no query.</td></tr>
   <tr><td>stdio server exits immediately</td><td>Missing env → the wrapper needs <code>.mcp.env</code> filled in and MemoryCore running (it falls back to <code>.admin-key</code> for the API key).</td></tr>
@@ -286,7 +269,7 @@ TDAI_ENABLE_SKILLS=true
 <div class="card ok-box">
   <strong>Sanity check for a new setup:</strong> open a fresh session and ask the agent
   <em>"what do you remember about this team's architecture decisions?"</em> —
-  it should call <code>tdai_memory_context</code> (picking an identity if asked) and answer from memory, not from guesswork.
+  it should call <code>tdai_memory_context</code> and answer from memory, not from guesswork.
 </div>
 
 <p class="muted">Source of truth for configs: <code>MemoryMCP/examples/</code> · Server scripts: <code>deploy/global-images/</code> · This file: <code>MemoryMCP/examples/ONBOARDING.html</code></p>

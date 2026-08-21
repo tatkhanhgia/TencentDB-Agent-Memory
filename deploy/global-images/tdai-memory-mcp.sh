@@ -44,4 +44,13 @@ if [[ ! -f "$MCP_MAIN" ]]; then
   exit 1
 fi
 
+# Per-project read identity — the SAME resolution the reflect hook uses for
+# writes (.tdai-project.env → folder-name registry match → .mcp.env default),
+# so a session recalls the memory of the agent its lessons route to.
+# Harnesses launch stdio MCP servers with cwd = project dir, hence $PWD.
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/_identity.sh"
+resolve_project_identity "$PWD"
+echo "[tdai-memory-mcp] identity route=${TDAI_IDENTITY_ROUTE} agent=${TDAI_AGENT_ID:-?}" >&2
+
 exec "$NODE" "$MCP_MAIN"

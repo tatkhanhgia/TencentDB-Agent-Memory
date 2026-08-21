@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "tdai-memory": {
-      "serverUrl": "http://127.0.0.1:8425/mcp"
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
     }
   }
 }

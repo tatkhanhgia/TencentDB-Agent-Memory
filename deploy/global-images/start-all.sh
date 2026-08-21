@@ -38,8 +38,9 @@ info "═══ Step 3/4: proxy ════════════════
 PROXY_FULL_STACK="${PROXY_FULL_STACK:-1}" "$SCRIPT_DIR/start-proxy.sh"
 
 info "═══ Step 4/4: memory-mcp (Streamable HTTP) ═════════════════"
-# MCP 是可选组件（MCP_HTTP=0 跳过）；失败只 warn，不影响三件套。
-if [[ "${MCP_HTTP:-1}" == "1" ]]; then
+# Harness 一律走 stdio wrapper（tdai-memory-mcp.sh），HTTP MCP 默认不再启动；
+# 需要 HTTP（如远程接入/identity picker）时用 MCP_HTTP=1 显式打开。
+if [[ "${MCP_HTTP:-0}" == "1" ]]; then
   if [[ -f "$SCRIPT_DIR/.mcp.env" ]]; then
     "$SCRIPT_DIR/start-memory-mcp.sh" || warn "memory-mcp 启动失败（不影响 core/hub/proxy），详见 .memory-mcp.log"
   else

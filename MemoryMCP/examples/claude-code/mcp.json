@@ -1,11 +1,7 @@
 {
   "mcpServers": {
     "tdai-memory": {
-      "type": "http",
-      "url": "http://127.0.0.1:8425/mcp",
-      "headers": {
-        "Authorization": "Bearer tok-local-dev"
-      }
+      "command": "/Users/mac/Documents/Projects/MyProjects/TencentDB-Agent-Memory/deploy/global-images/tdai-memory-mcp.sh"
     }
   }
 }

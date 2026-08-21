@@ -1,5 +1,5 @@
 # Add under [mcp_servers.tdai-memory] in ~/.codex/config.toml
-# Codex stdio is the reliable path; do not use HTTP/remote MCP here.
+# Stdio is the standard transport for every harness; do not use HTTP/remote MCP here.
 # The wrapper sources env internally — no env table.
 
 [mcp_servers.tdai-memory]

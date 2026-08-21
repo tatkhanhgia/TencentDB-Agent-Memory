@@ -10,7 +10,11 @@
 # validation also TDAI_ENDPOINT + TDAI_API_KEY + TDAI_TEAM_ID.
 # May export TDAI_AGENT_ID / TDAI_TEAM_ID / TDAI_USER_ID (from
 # .tdai-project.env or a registry match); always sets TDAI_IDENTITY_ROUTE to
-# "file" | "folder-name:<name>" | "default".
+# "file" | "folder-name:<name>" | "default", and TDAI_IDENTITY_BOUND to 1 when
+# the project resolved to an agent of its own, 0 when it fell back to the
+# machine default. Callers use BOUND to decide whether this project may touch
+# memory at all — the default agent belongs to whoever set up the machine, not
+# to every project that happens to run here.
 #
 # Best-effort by contract: never exits non-zero, never writes to stdout
 # (MCP stdio owns stdout) — diagnostics go to stderr only.
@@ -36,7 +40,8 @@ _tdai_registry_agents() {
 resolve_project_identity() {
   local start="${1:-}"
   TDAI_IDENTITY_ROUTE="default"
-  export TDAI_IDENTITY_ROUTE
+  TDAI_IDENTITY_BOUND="0"
+  export TDAI_IDENTITY_ROUTE TDAI_IDENTITY_BOUND
   [[ -n "$start" && -d "$start" ]] || return 0
 
   local dir="$start" project_root="$start"
@@ -47,6 +52,7 @@ resolve_project_identity() {
       source "$dir/.tdai-project.env"
       set +a
       TDAI_IDENTITY_ROUTE="file"
+      TDAI_IDENTITY_BOUND="1"
       project_root="$dir"
       break
     fi
@@ -79,6 +85,7 @@ resolve_project_identity() {
     if [[ -n "$match_id" ]]; then
       export TDAI_AGENT_ID="$match_id"
       TDAI_IDENTITY_ROUTE="folder-name:$(basename "$project_root")"
+      TDAI_IDENTITY_BOUND="1"
     fi
   fi
 
@@ -97,12 +104,23 @@ resolve_project_identity() {
           process.stdout.write(!hit ? "missing" : hit.status === "active" ? "ok" : "inactive");
         } catch {}
       });' || true)"
+    # A binding that points at an agent the Panel does not have is worse than
+    # no binding: Core accepts writes for an unknown agent_id and reports
+    # success, so the lessons land somewhere nothing can ever read them. Treat
+    # it as unbound — memory off, writes refused — instead of warning into a
+    # stderr stream no harness shows.
     case "$verdict" in
       missing)
-        echo "[tdai-identity] warning: TDAI_AGENT_ID=${TDAI_AGENT_ID} (route=${TDAI_IDENTITY_ROUTE}) not found in the Panel agent registry" >&2
+        echo "[tdai-identity] warning: TDAI_AGENT_ID=${TDAI_AGENT_ID} (route=${TDAI_IDENTITY_ROUTE}) not found in the Panel agent registry — treating this project as unbound" >&2
+        TDAI_IDENTITY_BOUND="0"
+        TDAI_IDENTITY_INVALID="missing"
+        export TDAI_IDENTITY_BOUND TDAI_IDENTITY_INVALID
         ;;
       inactive)
-        echo "[tdai-identity] warning: TDAI_AGENT_ID=${TDAI_AGENT_ID} (route=${TDAI_IDENTITY_ROUTE}) exists but is not active in the Panel agent registry" >&2
+        echo "[tdai-identity] warning: TDAI_AGENT_ID=${TDAI_AGENT_ID} (route=${TDAI_IDENTITY_ROUTE}) exists but is not active in the Panel agent registry — treating this project as unbound" >&2
+        TDAI_IDENTITY_BOUND="0"
+        TDAI_IDENTITY_INVALID="inactive"
+        export TDAI_IDENTITY_BOUND TDAI_IDENTITY_INVALID
         ;;
     esac
   fi

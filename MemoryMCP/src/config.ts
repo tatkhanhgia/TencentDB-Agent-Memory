@@ -21,6 +21,15 @@ export interface IdentityConfig {
   captureEnabled: boolean;
   conversationRef?: string;
   skillsEnabled: boolean;
+  /**
+   * The project this session runs in resolved to no agent of its own (no
+   * .tdai-project.env, no Panel agent named after the folder), so the wrapper
+   * fell back to the machine default. Serving that default's memory would show
+   * one project another project's context and file this session's lessons
+   * there — so memory reads answer empty and writes are refused. Skills are
+   * team assets and stay visible.
+   */
+  identityUnbound: boolean;
 }
 
 export class ConfigError extends Error {
@@ -82,5 +91,6 @@ export function loadConfigFromEnv(env: NodeJS.Dict<string> = process.env): Ident
     captureEnabled: /^true|1|yes$/i.test(env.TDAI_ENABLE_CAPTURE ?? ""),
     conversationRef: optionalEnv(env, "TDAI_CONVERSATION_REF"),
     skillsEnabled: /^true|1|yes$/i.test(env.TDAI_ENABLE_SKILLS ?? ""),
+    identityUnbound: /^true|1|yes$/i.test(env.TDAI_IDENTITY_UNBOUND ?? ""),
   };
 }

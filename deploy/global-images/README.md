@@ -206,12 +206,27 @@ env 由 wrapper 自己加载（harness 配置里不需要 env 块），并按 pr
 identity（与写钩子共用 `_identity.sh`，读写永远落到同一个 agent）：
 
 1. project 根目录的 `.tdai-project.env`（显式覆盖，`TDAI_AGENT_ID=agt-…`）；
-2. Panel registry 里名字与 project 文件夹同名的 active agent（零配置约定）；
-3. `.mcp.env` 里的机器默认 agent。
+2. Panel registry 里名字与 project 文件夹同名的 active agent（零配置约定）。
 
-解析结果打到 stderr（`identity route=… agent=…`），最终 agent id 会对 registry
-校验，指向已删除/停用 agent 时会告警而不是静默绑定。identity 在进程启动时定死，
-改了 `.tdai-project.env` 或 Panel 里的 agent 后需要新开 session。
+命中 1 或 2 → **bound**；两条都不命中 → **unbound**。
+
+**unbound 的项目没有记忆**（严格模式，默认开启）：memory 四个工具一律返回空并附带
+一句"本项目未绑定 agent"的说明，session 结束的反思钩子拒绝写入。
+`.mcp.env` 里的机器默认 agent **不再**兜底 —— 那是别的项目的记忆，读会串台、
+写会污染，比没有更糟。Skill 不受影响：它是团队资产，unbound 时自动按 team scope 提供。
+
+想回到旧的"共享默认 agent"行为：`.mcp.env` 里设 `TDAI_ALLOW_DEFAULT_IDENTITY=1`。
+
+解析结果打到 stderr（`identity route=… agent=… bound=…`）。最终 agent id 会对
+registry 校验：指向已删除/停用的 agent 时**按 unbound 处理**（记忆关闭、拒绝写入），
+不是只告警了事 —— Core 对不存在的 agent_id 照样收下并返回 `"status":"written"`，
+写进去的东西再也读不出来，比直接拒绝更糟。identity 在进程启动时
+定死，改了 `.tdai-project.env` 或 Panel 里的 agent 后需要新开 session。
+
+> 升级注意：本次改动之前，凡是没建 agent 的项目都在默默读写机器默认 agent。
+> 升级后它们会直接变成"无记忆"。要保留原有记忆，在项目根写一个
+> `.tdai-project.env` 指向原来那个默认 agent 即可（本仓库自己就是这么做的）。
+> 用 `node smoke-mcp.mjs --cwd <项目目录>` 可以先确认它算 bound 还是 unbound。
 
 **HTTP 模式（遗留，按需）**：`./start-memory-mcp.sh` 手动启动 `:8425`
 （`start-all.sh` 默认不再带起，需要 `MCP_HTTP=1`），Bearer device token 映射
@@ -237,6 +252,46 @@ Skill 是"跑通过的 SOP"，与 memory 是两类资产。默认关闭，开启
 只做第 1 步的话工具在、但模型只能靠 tool description 自己领悟要不要用。
 与 proxy 的区别：proxy 每个 session 主动注入 `<available_skills>` 目录，MCP 这条路是
 纯拉取 —— 模型不主动搜就永远不知道有什么。三个工具都是只读，写路径仍在 Panel / proxy。
+
+### 冒烟测试：端到端验证 MCP 全链路
+
+`verify.sh` 只做启动前的环境干跑，不碰 MCP。要确认"从 memory 到 skill 整条路真的通"，
+用 `smoke-mcp.mjs` —— 它按 harness 的方式 spawn `tdai-memory-mcp.sh`，走真实 stdio
+JSON-RPC 打真实 Core，14 步依次串联，**每一步的入参来自上一步的返回**
+（scene path 来自 context、skill_id 来自 list、file path 来自 get），所以断链会以
+FAIL 暴露，而不是"绿但是空"。
+
+```bash
+node deploy/global-images/smoke-mcp.mjs                 # 常规体检
+node deploy/global-images/smoke-mcp.mjs --cwd <项目目录>  # 验该项目的 identity 路由
+node deploy/global-images/smoke-mcp.mjs --json          # CI/脚本用，结构化输出
+node deploy/global-images/smoke-mcp.mjs --wrapper <sh>  # 测另一份 wrapper 安装
+```
+
+覆盖范围：identity 解析（agent 不在 Panel registry 里 → FAIL，不是 stderr 上一条
+没人看的 warning）→ initialize → tools/list（按 `TDAI_ENABLE_SKILLS` 断言 4 或 8 个
+工具，只出现一半算 FAIL）→ memory_context / memory_search / scene_read /
+conversation_search → skill_list（agent + team 两个 scope）/ skill_search /
+skill_get / skill_file_read → stdout 协议纯净度 + 密钥泄漏检查 → **写路径预检**：
+SessionEnd 钩子有没有接上 + reflect LLM 能不能连通。
+
+最后两步是必需的：读路径全绿完全不代表记得住东西。写路径归 SessionEnd 钩子管，走
+另一个 LLM，`.reflect.log` 里 `chat completion request failed: fetch failed` 就是
+这条腿断了（本地部署最常见的原因：LM Studio / 上游模型没起）。少了这两步，
+"14 passed" 会在"召回正常但一条经验都存不下来"时照样报绿。
+
+退出码：全 PASS/SKIP → 0；任一 FAIL → 1。**SKIP 不是缺陷**，它表示"上一步没产出可串的值"
+（例如还没有 scene、Skill 库为空）。
+
+两条让结果稳定的约定，改脚本时请保持：
+
+- **不对固定关键词断言**。搜索用的词从上一步的返回里现取（scene 名 / Skill 名），
+  这样"库里恰好没有这个词"不会变成假红。给 `--query` 传的词只作参考输出，不参与断言。
+- **取 items 要容忍两种形状**。`tdai_skill_search` 把命中放在 `result.items`，
+  `tdai_memory_search` 放在顶层 `items` —— 只读顶层会把正常的搜索报成 0 命中。
+
+改完脚本后拿"反向对照"验一次它还会变红：复制一份 wrapper、把 `TDAI_ENDPOINT`
+指到没人监听的端口，再 `--wrapper` 指过去，应当是 6 FAIL / exit 1。
 
 ## 记忆写入：session 结束反思（tdai-reflect）
 

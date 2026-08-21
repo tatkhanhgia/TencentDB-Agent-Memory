@@ -32,6 +32,16 @@ The hook is fire-and-forget: it detaches `tdai-reflect` and always exits 0,
 so session shutdown is never blocked. Output lands in
 `deploy/global-images/.reflect.log`.
 
+## Unbound projects are refused
+
+The hook resolves the project's identity with the same `_identity.sh` the MCP
+wrapper uses. If the project binds to no agent of its own (no
+`.tdai-project.env`, no Panel agent named after the folder), the hook writes a
+`refused:` line to `.reflect.log` and exits without calling the LLM: the only
+target available would be the machine default, which belongs to another
+project. Bind the project first, or set `TDAI_ALLOW_DEFAULT_IDENTITY=1` in
+`.mcp.env` to restore the old shared-default behaviour.
+
 ## Config sources (resolved by the hook, in order)
 
 1. `deploy/global-images/.mcp.env` — TDAI identity + `TDAI_REFLECT_LLM_*`

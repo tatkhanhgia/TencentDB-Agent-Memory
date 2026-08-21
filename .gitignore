@@ -124,3 +124,9 @@ coverage/
 
 # Local harness MCP config (contains the live device token)
 /opencode.json
+
+# Per-project memory binding. The agent id inside is issued by whichever Core
+# instance created it, so it only means something on that deployment. Commit it
+# only if the whole team shares ONE Core; with a Core per developer a committed
+# id is a phantom on every other machine.
+.tdai-project.env

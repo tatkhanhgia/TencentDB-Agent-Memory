@@ -64,6 +64,25 @@ source "$DEPLOY_DIR/_identity.sh"
 resolve_project_identity "$SESSION_CWD"
 ROUTE="$TDAI_IDENTITY_ROUTE"
 
+# Unbound project: the only agent we could write to is the machine default,
+# which belongs to another project. Filing this session's lessons there is
+# worse than losing them, so refuse and say how to bind.
+if [[ "${TDAI_IDENTITY_BOUND:-0}" != "1" && "${TDAI_ALLOW_DEFAULT_IDENTITY:-0}" != "1" ]]; then
+  {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] session=$SESSION_ID route=$ROUTE cwd=$SESSION_CWD"
+    if [[ -n "${TDAI_IDENTITY_INVALID:-}" ]]; then
+      # Core accepts writes for an unknown agent_id and answers "written", so
+      # the lessons would be unreadable forever. Refusing is the honest outcome.
+      echo "  refused: agent ${TDAI_AGENT_ID:-?} is ${TDAI_IDENTITY_INVALID} on the Panel; a write would be accepted and then unreadable."
+      echo "  fix: correct TDAI_AGENT_ID in .tdai-project.env, or re-activate the agent on the Panel."
+    else
+      echo "  refused: project is not bound to an agent; not writing to the machine default (${TDAI_AGENT_ID:-?})."
+      echo "  bind it: create a Panel agent named '$(basename "$SESSION_CWD")', or write TDAI_AGENT_ID=agt-… to .tdai-project.env at the project root."
+    fi
+  } >> "$LOG_FILE" 2>&1
+  exit 0
+fi
+
 # Local models (LM Studio) can take well over the 60s default on long
 # transcripts; a timed-out extraction silently loses the session's lessons.
 export TDAI_REFLECT_TIMEOUT_MS="${TDAI_REFLECT_TIMEOUT_MS:-240000}"

@@ -51,6 +51,24 @@ fi
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/_identity.sh"
 resolve_project_identity "$PWD"
-echo "[tdai-memory-mcp] identity route=${TDAI_IDENTITY_ROUTE} agent=${TDAI_AGENT_ID:-?}" >&2
+
+# A project with no agent of its own must not read the machine default's
+# memory — that is another project's context. Memory tools answer empty and
+# capture is refused; Skill tools stay on (team assets). Set
+# TDAI_ALLOW_DEFAULT_IDENTITY=1 in .mcp.env for the old shared-default behaviour.
+if [[ "${TDAI_IDENTITY_BOUND:-0}" != "1" && "${TDAI_ALLOW_DEFAULT_IDENTITY:-0}" != "1" ]]; then
+  export TDAI_IDENTITY_UNBOUND=1
+  if [[ -n "${TDAI_IDENTITY_INVALID:-}" ]]; then
+    echo "[tdai-memory-mcp] agent ${TDAI_AGENT_ID:-?} is ${TDAI_IDENTITY_INVALID} on the Panel — memory disabled (Skills still available)." >&2
+    echo "[tdai-memory-mcp]   fix the id in .tdai-project.env, or re-activate the agent on the Panel" >&2
+  else
+    echo "[tdai-memory-mcp] project not bound to an agent — memory disabled (Skills still available)." >&2
+    echo "[tdai-memory-mcp]   bind it: create a Panel agent named '$(basename "$PWD")', or write TDAI_AGENT_ID=agt-… to .tdai-project.env" >&2
+  fi
+else
+  unset TDAI_IDENTITY_UNBOUND
+fi
+
+echo "[tdai-memory-mcp] identity route=${TDAI_IDENTITY_ROUTE} agent=${TDAI_AGENT_ID:-?} bound=${TDAI_IDENTITY_BOUND:-0}" >&2
 
 exec "$NODE" "$MCP_MAIN"

@@ -40,6 +40,26 @@ function jsonText(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+/**
+ * Memory answer for a project that owns no agent. Not an error: the harness
+ * should keep working and the model should read this as "this project has no
+ * memory yet", never as "recall is broken" — and never as another project's
+ * context, which is what serving the machine default would do.
+ */
+function unboundMemoryResult(extra: Record<string, unknown>): ToolResult {
+  const structured = {
+    scope: "self" as const,
+    unbound: true,
+    reason:
+      "This project is not bound to a memory agent, so it has no memory of its own. " +
+      "Treat the result as empty — do not answer from another project's memory. " +
+      "To bind it: create a Panel agent named after the project folder, or add " +
+      "TDAI_AGENT_ID=agt-… to .tdai-project.env at the project root, then restart the session.",
+    ...extra,
+  };
+  return { structured, text: jsonText(structured), isError: false };
+}
+
 function errorResult(code: string, message: string): ToolResult {
   const structured = { error: code, message };
   return { structured, text: jsonText(structured), isError: true };
@@ -298,7 +318,10 @@ export async function handleTdaiSkillList(
   if (!ctx.config.skillsEnabled || !ctx.memory.listSkills) {
     return errorResult("skills_disabled", "tdai_skill_list is disabled (set TDAI_ENABLE_SKILLS=true)");
   }
-  const skillScope = parseSkillScope(args.scope);
+  // An unbound project has no agent of its own, so an agent-scoped listing
+  // would filter by the machine default and hide the team library behind an
+  // empty result. Team scope is the only meaningful scope here.
+  const skillScope = ctx.config.identityUnbound ? "team" : parseSkillScope(args.scope);
   const limit = parseListLimit(args.limit);
   const offset = parseOffset(args.offset);
   const raw = await ctx.memory.listSkills({
@@ -332,7 +355,7 @@ export async function handleTdaiSkillSearch(
   }
   const query = parseQuery(args.query);
   const limit = parseMaxItems(args.limit);
-  const skillScope = parseSkillScope(args.scope);
+  const skillScope = ctx.config.identityUnbound ? "team" : parseSkillScope(args.scope);
   const raw = await ctx.memory.searchSkills({
     query,
     limit,
@@ -432,6 +455,27 @@ export async function handleToolCall(
     return errorResult("unknown_tool", `Unknown tool: ${name}`);
   }
   try {
+    // Unbound project: memory is off (empty reads, refused writes), Skills stay
+    // on — they are team assets, not per-project memory.
+    if (ctx.config.identityUnbound) {
+      switch (name) {
+        case "tdai_memory_context":
+          return unboundMemoryResult({ persona: null, scenes: [], items: [] });
+        case "tdai_memory_search":
+          return unboundMemoryResult({ items: [] });
+        case "tdai_conversation_search":
+          return unboundMemoryResult({ messages: [] });
+        case "tdai_scene_read":
+          return unboundMemoryResult({ content: "" });
+        case "tdai_memory_capture":
+          return errorResult(
+            "identity_unbound",
+            "Refusing to write: this project is not bound to a memory agent, and the machine default belongs to another project. Bind it first (Panel agent named after the folder, or TDAI_AGENT_ID in .tdai-project.env).",
+          );
+        default:
+          break;
+      }
+    }
     switch (name as ToolName) {
       case "tdai_memory_context":
         return await handleTdaiMemoryContext(body, ctx);

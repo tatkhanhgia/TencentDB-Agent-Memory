@@ -57,7 +57,11 @@ export default function AgentGrid({
   });
   const handleSetViewMode = useCallback((mode: ViewMode) => {
     setViewMode(mode);
-    try { localStorage.setItem('agentGrid.viewMode', mode); } catch {}
+    try {
+      localStorage.setItem('agentGrid.viewMode', mode);
+    } catch {
+      // Storage can be unavailable in private browsing; the in-memory mode still applies.
+    }
   }, []);
 
   const ownerOptions = useMemo(() => {

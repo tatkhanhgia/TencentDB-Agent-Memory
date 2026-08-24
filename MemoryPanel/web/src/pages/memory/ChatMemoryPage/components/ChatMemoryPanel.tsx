@@ -12,6 +12,7 @@
 
 import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { Button, Segment, Select } from 'tea-component';
 import { AppIcon, UsergroupIcon, UserIcon } from 'tea-icons-react';
 import { useAgents, useTeams } from '@/services';
@@ -52,6 +53,7 @@ export default function ChatMemoryPanel(
   } = {},
 ) {
   const { t } = useTranslation();
+  const location = useLocation();
   const scopeTabLabels = useScopeTabLabels();
   const auth = readAuth();
   const { activeTeamId: storeActiveTeamId, activeTeam } = useTeams();
@@ -76,6 +78,14 @@ export default function ChatMemoryPanel(
   const [showAllocate, setShowAllocate] = useState(false);
   const [scopeTab, setScopeTab] = useState<ScopeTab>('team');
   const [agentFilter, setAgentFilter] = useState<string>('');
+
+  // Capture activity deep-links must open the raw L0 layer explicitly.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('layer') === 'L0') setLayer('L0');
+    const agentId = params.get('agent_id');
+    if (agentId) setAgentFilter(agentId);
+  }, [location.search]);
 
   useEffect(() => {
     if (ownedTeamAgents.length === 0) {

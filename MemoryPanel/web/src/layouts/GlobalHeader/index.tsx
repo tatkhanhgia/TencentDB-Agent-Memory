@@ -12,6 +12,7 @@ import { SettingsDialog } from '@/components/SettingsDialog';
 import { type TeamRole } from '@/services/useCurrentRole';
 import { TeamSwitcher } from './TeamSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { CaptureActivity } from './CaptureActivity';
 import './style.css';
 
 export function GlobalHeader({
@@ -42,10 +43,7 @@ export function GlobalHeader({
 
       {/* 右侧：同步状态 + 语言切换 + 用户菜单 */}
       <div className="_memory-global-header-right">
-        {/* <span className="_memory-global-header-sync" title={t('header.sync.title')}>
-          <span className="_memory-global-header-sync-dot" />
-          {t('header.sync')}
-        </span> */}
+        <CaptureActivity />
 
         <LanguageSwitcher />
 

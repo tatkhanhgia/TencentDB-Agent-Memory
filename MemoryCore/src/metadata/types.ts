@@ -184,6 +184,13 @@ export interface AssetEntity {
   confidence?: number | null;
   expires_at?: string | null;
   last_used_at?: string | null;
+  /**
+   * Thời điểm mẩu memory mới nhất được ghi vào asset này (ISO8601), `null` = chưa có memory.
+   * KHÁC `updated_at`: `updated_at` là "metadata đổi lần cuối" (đổi tên / visibility),
+   * còn cột này chỉ đổi khi đường ghi dữ liệu (L0/L1/L2/L3) thực sự thêm nội dung.
+   * Không nằm trong allow-list của `updateAsset` — chỉ `touchAssetMemory` mới ghi được.
+   */
+  last_memory_at?: string | null;
   usage_count: number;
   content_ref?: string | null;
   created_at: string;

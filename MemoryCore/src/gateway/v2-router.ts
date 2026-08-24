@@ -652,6 +652,30 @@ export async function handleV2Route(
 // L0 Conversation Handlers
 // ============================
 
+/**
+ * Touch `last_memory_at` của chat_memory asset ứng với (team, agent).
+ *
+ * Gọi SAU khi ghi data-plane thành công — không phải trước, để lần ghi lỗi không
+ * đẩy thời gian lên. Fail thì chỉ warn: hiển thị ngày trên panel không đáng để
+ * làm hỏng một lần ghi memory.
+ */
+async function touchChatMemoryTimestamp(
+  deps: V2RouterDeps,
+  iso: { teamId?: string; agentId?: string } | undefined,
+  serviceId: string,
+): Promise<void> {
+  if (!deps.getMetadataService || !iso?.teamId || !iso?.agentId) return;
+  try {
+    const metaSvc = await deps.getMetadataService(serviceId);
+    await metaSvc.touchChatMemoryAsset({ team_id: iso.teamId, agent_id: iso.agentId });
+  } catch (err) {
+    deps.logger.warn(
+      `${TAG} touchChatMemoryAsset failed (team=${iso.teamId} agent=${iso.agentId}): ` +
+      `${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 async function handleConversationAdd(body: unknown, auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
   const parsed = conversationAddRequestSchema.safeParse(body);
   if (!parsed.success) return errorEnvelope(400, formatZodError(parsed.error), requestId);
@@ -793,6 +817,8 @@ async function handleConversationAdd(body: unknown, auth: V2AuthContext, request
     }
     acceptedIds.push(id);
   }
+
+  await touchChatMemoryTimestamp(deps, iso, auth.serviceId);
 
   // Notify pipeline: trigger async L1 extraction (service mode).
   // Each role=user message counts as one conversation round for threshold/timer logic.
@@ -1085,7 +1111,7 @@ async function handleConversationDelete(body: unknown, auth: V2AuthContext, requ
   return successEnvelope<ConversationDeleteData>({ deleted_count: deletedCount }, requestId);
 }
 
-async function handleAtomicUpdate(body: unknown, _auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
+async function handleAtomicUpdate(body: unknown, auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
   const parsed = atomicUpdateRequestSchema.safeParse(body);
   if (!parsed.success) return errorEnvelope(400, formatZodError(parsed.error), requestId);
   const { id, content, background } = parsed.data;
@@ -1139,6 +1165,8 @@ async function handleAtomicUpdate(body: unknown, _auth: V2AuthContext, requestId
   if (embedding) { try { emb = await embedding.embed(content); } catch (e) { console.warn(`[v2-router] L1 embedding failed:`, e); } }
 
   await store.upsertL1(updated, emb);
+
+  await touchChatMemoryTimestamp(deps, iso, auth.serviceId);
 
   // 审计：L1 update — 用外部请求的 IdFields 而非 record 原值（per user 决策）
   await recordAudit(store, {
@@ -1947,7 +1975,7 @@ async function handleScenarioRead(body: unknown, _auth: V2AuthContext, requestId
   }, requestId);
 }
 
-async function handleScenarioWrite(body: unknown, _auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
+async function handleScenarioWrite(body: unknown, auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
   const parsed = scenarioWriteRequestSchema.safeParse(body);
   if (!parsed.success) return errorEnvelope(400, formatZodError(parsed.error), requestId);
   const { path, content, summary } = parsed.data;
@@ -2009,6 +2037,8 @@ async function handleScenarioWrite(body: unknown, _auth: V2AuthContext, requestI
     requestId,
     logger: deps.logger,
   });
+
+  await touchChatMemoryTimestamp(deps, deps.requestIsolation, auth.serviceId);
 
   return successEnvelope<ScenarioWriteData>({
     path,
@@ -2119,7 +2149,7 @@ async function handleCoreCount(body: unknown, _auth: V2AuthContext, requestId: s
   return successEnvelope<CountData>({ total: content ? 1 : 0 }, requestId);
 }
 
-async function handleCoreWrite(body: unknown, _auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
+async function handleCoreWrite(body: unknown, auth: V2AuthContext, requestId: string, deps: V2RouterDeps): Promise<ApiResponseEnvelope> {
   const parsed = coreWriteRequestSchema.safeParse(body);
   if (!parsed.success) return errorEnvelope(400, formatZodError(parsed.error), requestId);
   const { content } = parsed.data;
@@ -2154,6 +2184,8 @@ async function handleCoreWrite(body: unknown, _auth: V2AuthContext, requestId: s
     requestId,
     logger: deps.logger,
   });
+
+  await touchChatMemoryTimestamp(deps, deps.requestIsolation, auth.serviceId);
 
   return successEnvelope<CoreWriteData>({
     updated_at: new Date().toISOString(),

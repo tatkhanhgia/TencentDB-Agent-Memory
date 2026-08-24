@@ -144,6 +144,13 @@ export interface IMetadataStore {
   deleteAssets(assetIds: string[]): MaybePromise<BatchDeleteResult>;
   listAssetsByTeam(teamId: string, pagination?: PaginationParams | null, filter?: AssetFilter): MaybePromise<ListPage<AssetEntity>>;
   touchAssetUsage(assetId: string): MaybePromise<void>;
+  /**
+   * Đẩy `last_memory_at` của asset lên `at` (ISO8601). **Đơn điệu**: chỉ ghi khi
+   * `at` mới hơn giá trị hiện tại, để request đến trễ không kéo lùi thời gian.
+   * Asset không tồn tại → no-op, không throw.
+   * Không đụng `updated_at` / `version` / `usage_count`.
+   */
+  touchAssetMemory(assetId: string, at: string): MaybePromise<void>;
 
   // ── AgentFixedAsset ──（setAgentFixedAssets 全量替换）
   setAgentFixedAssets(agentId: string, bindings: FixedAssetBindingInput[]): MaybePromise<void>;

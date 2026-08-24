@@ -49,6 +49,7 @@ interface AssetRaw {
   visibility: string;
   status: string;
   updated_at: string;
+  last_memory_at?: string | null;
 }
 interface AgentRaw {
   agent_id: string;
@@ -77,6 +78,11 @@ interface MemoryBlockOut {
   summary: string;
   uploaded_by_user_id: string;
   updated_at_ms: number;
+  /**
+   * Thời điểm mẩu memory mới nhất trong block (ms epoch), `null` = chưa có / chưa biết.
+   * KHÁC `updated_at_ms` (= `meta_assets.updated_at`, chỉ đổi khi metadata bị sửa).
+   */
+  last_memory_at_ms: number | null;
   layer_counts: { L0_messages: number; L1: number; L2: number; L3: number };
   scope?: 'team' | 'private';
   bound_agent_count?: number;
@@ -113,6 +119,7 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
       summary: buildSummary(),
       uploaded_by_user_id: a.owner_user_id,
       updated_at_ms: toMs(a.updated_at),
+      last_memory_at_ms: toMsOrNull(a.last_memory_at),
       layer_counts: emptyLayers(),
     }));
     return respondEnvelope(c, okEnvelope(c, { items: out, total: out.length }));
@@ -162,7 +169,8 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
     );
     if (listEnv.code !== 0) return respondEnvelope(c, listEnv);
 
-    // list-with-detail 返回的 items（AgentAssetView）不带 owner_user_id
+    // list-with-detail 返回的 items（AgentAssetView）现在带 owner + 时间字段；
+    // 下面的可选类型也兼容仍在运行的旧 kernel。
     interface FixedAssetDetailRaw {
       asset_id: string;
       asset_type: string;
@@ -170,38 +178,29 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
       status: string;
       visibility: string;
       created_at: string;
+      owner_user_id?: string;
+      updated_at?: string;
+      last_memory_at?: string | null;
     }
     const items = extractListItems<FixedAssetDetailRaw>(listEnv)
       .filter((it) => it.asset_type === 'chat_memory')
       .filter((it) => it.status !== 'archived' && it.status !== 'deprecated' && it.status !== 'failed');
 
-    // 拿真实 owner_user_id 和 updated_at（list-with-detail 不返这两个字段）
-    const out: MemoryBlockOut[] = await Promise.all(
-      items.map(async (it) => {
-        let ownerUserId = '';
-        let updatedAt = it.created_at; // 兜底：asset/get 失败时用 created_at
-        try {
-          const aEnv = await deps.metaKernel.invoke('asset/get', { asset_id: it.asset_id }, ctx);
-          if (aEnv.code === 0 && aEnv.data) {
-            const a = aEnv.data as AssetRaw;
-            ownerUserId = a.owner_user_id;
-            updatedAt = a.updated_at || it.created_at;
-          }
-        } catch { /* fallback 空 */ }
-        return {
-          id: it.asset_id,
-          title: it.name,
-          summary: buildSummary(),
-          uploaded_by_user_id: ownerUserId,
-          updated_at_ms: toMs(updatedAt),
-          // 透传给前端做灰化：team 正常显示，private 灰化 + 打"已被 owner 设为私密"标签
-          scope: it.visibility === 'private' ? 'private' : 'team',
-          // TEMP：本地测试展示用；生产应改为懒加载
-          layer_counts: emptyLayers(),
-          agent_id: agentId,
-        };
-      }),
-    );
+    // list-with-detail 现在已经返回 owner + 时间，不再逐条 asset/get；
+    // 本 tab 从 1 + 1 + N 次调用降为固定 3 次：auth/verify + agent/get + list-with-detail。
+    const out: MemoryBlockOut[] = items.map((it) => ({
+      id: it.asset_id,
+      title: it.name,
+      summary: buildSummary(),
+      uploaded_by_user_id: it.owner_user_id ?? '',
+      updated_at_ms: toMs(it.updated_at || it.created_at),
+      last_memory_at_ms: toMsOrNull(it.last_memory_at),
+      // 透传给前端做灰化：team 正常显示，private 灰化 + 打"已被 owner 设为私密"标签
+      scope: it.visibility === 'private' ? 'private' : 'team',
+      // TEMP：本地测试展示用；生产应改为懒加载
+      layer_counts: emptyLayers(),
+      agent_id: agentId,
+    }));
     return respondEnvelope(c, okEnvelope(c, { items: out, total: out.length }));
   });
 
@@ -233,32 +232,31 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
     const agents = extractListItems<AgentRaw & { name: string; description?: string }>(agentEnv)
       .filter((a) => a.owner_user_id === meUserId);
 
-    // 每个 agent 对应一块记忆：查 chat_memory asset（若已 auto-mint）拿到 visibility
-    const out: MemoryBlockOut[] = await Promise.all(
-      agents.map(async (a) => {
-        const assetId = `chat_memory-${teamId}-${a.agent_id}`;
-        let visibility: 'team' | 'private' = 'private';
-        let updated_at_ms = 0;
-        try {
-          const assetEnv = await deps.metaKernel.invoke('asset/get', { asset_id: assetId }, ctx);
-          if (assetEnv.code === 0 && assetEnv.data) {
-            const asset = assetEnv.data as AssetRaw;
-            visibility = asset.visibility === 'team' ? 'team' : 'private';
-            updated_at_ms = toMs(asset.updated_at);
-          }
-        } catch { /* asset 不存在 → 保留 private + 0 */ }
-        return {
-          id: assetId,
-          title: a.name, // ← 用 agent name 作为块标题，符合"一 agent 一块记忆"
-          summary: buildSummary(),
-          uploaded_by_user_id: meUserId,
-          updated_at_ms,
-          layer_counts: emptyLayers(),
-          scope: visibility,
-          agent_id: a.agent_id,
-        };
-      }),
-    );
+    // 一次 asset/list 为整个 team 拉取 chat_memory，避免每个 agent 一次 asset/get（N+1）。
+    // chat_memory asset 的每个 agent id 是确定的 `chat_memory-{team}-{agent}`，
+    // 所以只需建一次 Map 再查；asset/list 失败时保守使用空 Map，不让整个 tab 失败。
+    const assetList = await fetchAllChatMemoryAssets(deps, ctx, teamId);
+    const assetById = new Map<string, AssetRaw>();
+    if (assetList) {
+      for (const a of assetList) assetById.set(a.asset_id, a);
+    }
+
+    const out: MemoryBlockOut[] = agents.map((a) => {
+      const assetId = `chat_memory-${teamId}-${a.agent_id}`;
+      const asset = assetById.get(assetId);
+      const visibility: 'team' | 'private' = asset?.visibility === 'team' ? 'team' : 'private';
+      return {
+        id: assetId,
+        title: a.name, // ← 用 agent name 作为块标题，符合"一 agent 一块记忆"
+        summary: buildSummary(),
+        uploaded_by_user_id: meUserId,
+        updated_at_ms: asset ? toMs(asset.updated_at) : 0,
+        last_memory_at_ms: asset ? toMsOrNull(asset.last_memory_at) : null,
+        layer_counts: emptyLayers(),
+        scope: visibility,
+        agent_id: a.agent_id,
+      };
+    });
     return respondEnvelope(c, okEnvelope(c, { items: out, total: out.length }));
   });
 
@@ -288,6 +286,7 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
         summary: buildSummary(),
         uploaded_by_user_id: a.owner_user_id,
         updated_at_ms: toMs(a.updated_at),
+        last_memory_at_ms: toMsOrNull(a.last_memory_at),
         // TEMP：本地测试展示用；生产应改为懒加载或前端点击时按需拉
         layer_counts: emptyLayers(),
         scope: (a.visibility === 'private' ? 'private' : 'team') as 'team' | 'private',
@@ -343,6 +342,7 @@ export function registerChatMemoryRoutes(api: Hono, deps: PanelDeps): void {
         summary: buildSummary(),
         uploaded_by_user_id: asset.owner_user_id,
         updated_at_ms: toMs(asset.updated_at),
+        last_memory_at_ms: null,
         layer_counts: emptyLayers(),
         scope: asset.visibility === 'private' ? 'private' : 'team',
       } satisfies MemoryBlockOut),
@@ -1121,6 +1121,53 @@ function extractListItems<T>(env: MetaEnvelope<unknown>): T[] {
   return [];
 }
 
+/**
+ * 分页拉取 team 的 chat_memory asset。失败返回 null，由调用方按"无 asset"处理，
+ * 不让 asset/list 的上游错误把 my-agents 整个 tab 变成错误响应。
+ */
+async function fetchAllChatMemoryAssets(
+  deps: PanelDeps,
+  ctx: MetaCallContext,
+  teamId: string,
+): Promise<AssetRaw[] | null> {
+  const all: AssetRaw[] = [];
+  let offset = 0;
+  let limit: number | undefined;
+
+  for (;;) {
+    const body: Record<string, unknown> = {
+      team_id: teamId,
+      asset_type: 'chat_memory',
+    };
+    // 首次请求使用 kernel 默认分页；后续严格按响应的 limit/offset 继续翻页。
+    if (limit !== undefined) {
+      body.limit = limit;
+      body.offset = offset;
+    }
+
+    let env: MetaEnvelope<unknown>;
+    try {
+      env = await deps.metaKernel.invoke('asset/list', body, ctx);
+    } catch {
+      return null;
+    }
+    if (env.code !== 0) return null;
+
+    const batch = extractListItems<AssetRaw>(env);
+    all.push(...batch);
+    const page = env.data as ListEnvelopeData<AssetRaw> | null;
+    const total = positiveOrZeroNumber(page?.total) ?? all.length;
+    const pageLimit = positiveNumber(page?.limit) ?? limit ?? 20;
+    const pageOffset = positiveOrZeroNumber(page?.offset) ?? offset;
+    if (all.length >= total || batch.length === 0) return all;
+
+    const nextOffset = pageOffset + pageLimit;
+    if (nextOffset <= offset) return all;
+    offset = nextOffset;
+    limit = pageLimit;
+  }
+}
+
 function isActive(a: AssetRaw): boolean {
   return a.status !== 'archived' && a.status !== 'deprecated' && a.status !== 'failed';
 }
@@ -1145,6 +1192,20 @@ function toMs(iso: string | undefined): number {
   if (!iso) return 0;
   const t = Date.parse(iso);
   return Number.isFinite(t) ? t : 0;
+}
+
+function toMsOrNull(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = new Date(iso).getTime();
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : undefined;
+}
+
+function positiveOrZeroNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 }
 
 /**

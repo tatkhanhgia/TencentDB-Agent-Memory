@@ -1018,6 +1018,7 @@ export class MongoMetadataStore implements IMetadataStore {
       confidence: input.confidence ?? null,
       expires_at: input.expires_at ?? null,
       last_used_at: null,
+      last_memory_at: null,
       usage_count: 0,
       content_ref: input.content_ref ?? null,
       created_at: now,
@@ -1070,6 +1071,13 @@ export class MongoMetadataStore implements IMetadataStore {
     await this.col("meta_assets").updateOne(
       { asset_id: assetId },
       { $inc: { usage_count: 1 }, $set: { last_used_at: nowIso() } },
+    );
+  }
+
+  async touchAssetMemory(assetId: string, at: string): Promise<void> {
+    await this.col("meta_assets").updateOne(
+      { asset_id: assetId, $or: [{ last_memory_at: null }, { last_memory_at: { $lt: at } }, { last_memory_at: { $exists: false } }] } as Document,
+      { $set: { last_memory_at: at } },
     );
   }
 

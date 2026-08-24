@@ -235,6 +235,7 @@ export class SqliteMetadataStore implements IMetadataStore {
         confidence REAL,
         expires_at TEXT,
         last_used_at TEXT,
+        last_memory_at TEXT,
         usage_count INTEGER NOT NULL DEFAULT 0,
         content_ref TEXT,
         created_at TEXT NOT NULL,
@@ -304,6 +305,7 @@ export class SqliteMetadataStore implements IMetadataStore {
         ON meta_config_params(module);
     `);
     this.migrateUserTypeColumn();
+    this.migrateAssetLastMemoryAtColumn();
     this.migrateLegacyUserKeys();
   }
 
@@ -319,6 +321,19 @@ export class SqliteMetadataStore implements IMetadataStore {
       }
     }
     this.db.exec(`DROP INDEX IF EXISTS ux_meta_users_single_system_admin`);
+  }
+
+  private migrateAssetLastMemoryAtColumn(): void {
+    const hasCol = this.all<{ name: string }>(
+      "SELECT name FROM pragma_table_info('meta_assets') WHERE name = 'last_memory_at'",
+    );
+    if (hasCol.length === 0) {
+      try {
+        this.db.exec(`ALTER TABLE meta_assets ADD COLUMN last_memory_at TEXT`);
+      } catch {
+        /* column may exist from concurrent init */
+      }
+    }
   }
 
   /** 存量库：若 meta_users 仍有 user_key 列，回填 meta_user_keys 后不再写入该列。 */
@@ -1272,9 +1287,9 @@ export class SqliteMetadataStore implements IMetadataStore {
     this.run(
       `INSERT INTO meta_assets
         (asset_id, team_id, asset_type, name, description, owner_user_id, source_type, source_ref,
-         version, visibility, status, confidence, expires_at, last_used_at, usage_count, content_ref,
+         version, visibility, status, confidence, expires_at, last_used_at, last_memory_at, usage_count, content_ref,
          created_at, updated_at, metadata_json)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       assetId,
       input.team_id,
       input.asset_type,
@@ -1288,6 +1303,7 @@ export class SqliteMetadataStore implements IMetadataStore {
       input.status ?? "draft",
       input.confidence ?? null,
       input.expires_at ?? null,
+      null,
       null,
       0,
       input.content_ref ?? null,
@@ -1362,6 +1378,14 @@ export class SqliteMetadataStore implements IMetadataStore {
       "UPDATE meta_assets SET usage_count = usage_count + 1, last_used_at = ? WHERE asset_id = ?",
       nowIso(),
       assetId,
+    );
+  }
+
+  touchAssetMemory(assetId: string, at: string): void {
+    this.run(
+      `UPDATE meta_assets SET last_memory_at = ?
+        WHERE asset_id = ? AND (last_memory_at IS NULL OR last_memory_at < ?)`,
+      at, assetId, at,
     );
   }
 
@@ -1671,6 +1695,7 @@ export class SqliteMetadataStore implements IMetadataStore {
       confidence: r.confidence != null ? Number(r.confidence) : null,
       expires_at: r.expires_at != null ? String(r.expires_at) : null,
       last_used_at: r.last_used_at != null ? String(r.last_used_at) : null,
+      last_memory_at: r.last_memory_at != null ? String(r.last_memory_at) : null,
       usage_count: Number(r.usage_count ?? 0),
       content_ref: r.content_ref != null ? String(r.content_ref) : null,
       created_at: String(r.created_at),

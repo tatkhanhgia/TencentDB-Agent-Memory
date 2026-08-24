@@ -136,6 +136,9 @@ export interface AgentAssetView {
   injection_mode: InjectionMode;
   priority: number;
   created_at: string;
+  owner_user_id: string;
+  updated_at: string;
+  last_memory_at?: string | null;
 }
 
 export interface ListWithDetailParams {
@@ -1160,6 +1163,21 @@ export class MetadataService {
     this.ensuredChatMemoryAssets.set(assetId, true);
   }
 
+  /**
+   * Đánh dấu "block memory của (team, agent) này vừa nhận nội dung mới".
+   *
+   * Gọi từ đường ghi data-plane (`/v3/conversation/add`, `/v3/atomic/update`,
+   * `/v3/scenario/write`, `/v3/core/write`) SAU khi ghi thành công. Cố tình tách khỏi
+   * `ensureChatMemoryAsset`: hàm đó có LRU short-circuit nên chỉ chạy thật ở lần đầu,
+   * còn touch phải chạy MỌI lần ghi.
+   *
+   * Không throw khi asset chưa tồn tại — store xử lý như no-op.
+   */
+  async touchChatMemoryAsset(params: { team_id: string; agent_id: string; at?: string }): Promise<void> {
+    const assetId = buildChatMemoryAssetId(params.team_id, params.agent_id);
+    await this.store.touchAssetMemory(assetId, params.at ?? new Date().toISOString());
+  }
+
   //  ============================================================
   //  Skill Asset — 同款 ensure 模式
   //  ============================================================
@@ -1293,6 +1311,8 @@ export class MetadataService {
         await this.store.touchAssetUsage(asset.asset_id);
       }
 
+      // Panel trước đây phải gọi thêm `asset/get` từng item để lấy owner + thời gian
+      // (N+1); trả sẵn ở đây để panel bỏ vòng lặp đó.
       items.push({
         asset_id: asset.asset_id,
         asset_type: asset.asset_type,
@@ -1303,6 +1323,9 @@ export class MetadataService {
         injection_mode: b.injection_mode,
         priority: b.priority,
         created_at: asset.created_at,
+        owner_user_id: asset.owner_user_id,
+        updated_at: asset.updated_at,
+        last_memory_at: asset.last_memory_at ?? null,
       });
     }
 

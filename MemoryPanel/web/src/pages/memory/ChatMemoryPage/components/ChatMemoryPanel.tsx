@@ -20,6 +20,7 @@ import { tea } from '@/lib/tea-bridge';
 import { chatMemoryApi, type ChatMemoryBlock, type ChatMemoryLayerItem } from '@/lib/teamApi';
 import { type MemoryBlock, type MemoryLayer, type ScopeTab } from './types';
 import { useScopeTabLabels } from './constants';
+import { blockTimeLabel } from './block-time';
 
 import { BlockDetail } from './BlockDetail';
 import { PersonalAssetsTable } from './PersonalAssetsTable';
@@ -125,6 +126,7 @@ export default function ChatMemoryPanel(
         summary: b.summary ?? '',
         tags: [],
         updated_at_ms: b.updated_at_ms,
+        last_memory_at_ms: b.last_memory_at_ms ?? null,
         agent_id: b.agent_id ?? undefined,
         uploaded_by_user_id: b.uploaded_by_user_id,
         scope: (b as any).scope,
@@ -610,7 +612,13 @@ export default function ChatMemoryPanel(
                     </AssetItemBadges>
 
                     <AssetItemMeta>
-                      <AssetItemTime>{new Date(b.updated_at_ms).toLocaleString()}</AssetItemTime>
+                      <AssetItemTime>
+                        {blockTimeLabel(b, t, {
+                          lastMemory: 'memory.detail.lastMemory',
+                          updated: 'memory.detail.updated',
+                          empty: 'memory.detail.noMemory',
+                        })}
+                      </AssetItemTime>
                     </AssetItemMeta>
 
                     {scopeTab === 'fixed' && !isSelfChatMemory(b) && (

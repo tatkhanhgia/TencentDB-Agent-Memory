@@ -30,6 +30,7 @@ export interface MemoryBlock {
   summary?: string;
   tags: string[];
   updated_at_ms: number;
+  last_memory_at_ms?: number | null;
   agent_id?: string;
   uploaded_by_user_id: string;
   scope?: 'team' | 'private';

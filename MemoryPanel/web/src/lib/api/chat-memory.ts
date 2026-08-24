@@ -12,6 +12,8 @@ export interface ChatMemoryBlock {
   summary?: string;
   uploaded_by_user_id: string;
   updated_at_ms: number;
+  /** Thời điểm mẩu memory mới nhất (ms epoch); null = chưa có/chưa biết */
+  last_memory_at_ms?: number | null;
   layer_counts: { L0_messages: number; L1: number; L2: number; L3: number };
   /** 仅 team-assets */
   bound_agent_count?: number;

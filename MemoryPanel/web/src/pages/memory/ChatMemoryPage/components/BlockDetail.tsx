@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { type MemoryLayer, type MemoryBlock, type AtomicItem } from './types';
 import { useLayers } from './constants';
 import { getLayerCount, stripAtMention, extractRole, formatDisplayTime } from './utils';
+import { blockTimeLabel } from './block-time';
 import { MarkdownView } from '@/components/MarkdownView';
 import { AppIcon, UsergroupIcon, ChevronDownIcon } from 'tea-icons-react';
 
@@ -94,7 +95,11 @@ export function BlockDetail({ block, layer, onLayerChange, agentLabel, layerPage
             </span>
           )}
           <span className="_memory-detail-meta-item">
-            {t('memory.detail.updated', { time: new Date(block.updated_at_ms).toLocaleString() })}
+            {blockTimeLabel(block, t, {
+              lastMemory: 'memory.detail.lastMemory',
+              updated: 'memory.detail.updated',
+              empty: 'memory.detail.noMemory',
+            })}
           </span>
         </div>
       </div>

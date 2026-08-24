@@ -3,6 +3,7 @@ import { ShareIcon, LockOnIcon, UserIcon } from 'tea-icons-react';
 import { Card, List, Text, Segment } from 'tea-component';
 import { useUserDisplayName } from '@/services/user-profile-store';
 import { type MemoryBlock } from './types';
+import { blockTimeLabel } from './block-time';
 
 /** 用户归属指示：纯文本 + 图标，不用亮色 Tag。 */
 function MemoryOwnerBadge({ userId, isCurrentUser }: { userId: string; isCurrentUser: boolean }) {
@@ -44,7 +45,13 @@ export function PersonalAssetsTable({
                 <List.Item key={block.id} selected={isSelected} onClick={() => onSelect(isSelected ? null : block.id)} className="_cm-personal-asset">
                   <div className="_cm-personal-asset-main">
                     <div className="_cm-personal-asset-name" title={block.title}>{block.title}</div>
-                    <div className="_cm-personal-asset-meta">{t('memoryPersonal.updatedAt', { time: new Date(block.updated_at_ms).toLocaleString() })}</div>
+                    <div className="_cm-personal-asset-meta">
+                      {blockTimeLabel(block, t, {
+                        lastMemory: 'memoryPersonal.lastMemoryAt',
+                        updated: 'memoryPersonal.updatedAt',
+                        empty: 'memoryPersonal.noMemory',
+                      })}
+                    </div>
                     <div className="_cm-personal-asset-id" title={block.id}>{block.id}</div>
                     {block.uploaded_by_user_id && (
                       <div className="_cm-personal-asset-badges">

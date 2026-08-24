@@ -30,6 +30,11 @@ export interface PanelConfig {
     sync: boolean;
     proxyBaseUrl: string;
   };
+  capture: {
+    journalDir: string;
+    journalMaxBytes: number;
+    ingestToken: string;
+  };
 }
 
 function envBool(key: string, fallback: boolean): boolean {
@@ -61,6 +66,11 @@ export function loadPanelConfig(): PanelConfig {
     knowledgeLlmBinding: {
       sync: envBool('KNOWLEDGE_LLM_BINDING_SYNC', true),
       proxyBaseUrl: env('KNOWLEDGE_LLM_PROXY_BASE_URL', 'http://127.0.0.1:8096'),
+    },
+    capture: {
+      journalDir: env('CAPTURE_JOURNAL_DIR', '/data/knowledge/capture'),
+      journalMaxBytes: envInt('CAPTURE_JOURNAL_MAX_BYTES', 5 * 1024 * 1024),
+      ingestToken: env('CAPTURE_INGEST_TOKEN', ''),
     },
   };
 }

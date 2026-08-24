@@ -12,6 +12,7 @@ import type { Logger } from './infra/logger.js';
 import type { KnowledgeClientPort } from './kernel/ports/knowledge-client-port.js';
 import { HttpKnowledgeClient } from './kernel/adapters/http-knowledge-client.js';
 import { KnowledgeTaskRegistry } from './state/knowledge-task-registry.js';
+import { CaptureRunRegistry } from './state/capture-run-registry.js';
 
 export interface PanelDeps {
   config: PanelConfig;
@@ -24,6 +25,7 @@ export interface PanelDeps {
   skillKernel: SkillKernelPort;
   /** Knowledge 抽取任务内存态：create 时 stash owner key，callback ready 时取出注册 meta asset。 */
   knowledgeTaskRegistry: KnowledgeTaskRegistry;
+  captureRunRegistry: CaptureRunRegistry;
 }
 
 export function buildPanelDeps(config: PanelConfig): PanelDeps {
@@ -43,7 +45,18 @@ export function buildPanelDeps(config: PanelConfig): PanelDeps {
     });
   const skillKernel = new FetchSkillKernelAdapter(kernelHttp, config.metadataRemoteTimeoutMs);
   const knowledgeTaskRegistry = new KnowledgeTaskRegistry();
-  return { config, logger, instanceRegistry, kernelHttp, metaKernel, knowledgeClientFactory, skillKernel, knowledgeTaskRegistry };
+  const captureRunRegistry = new CaptureRunRegistry(config.capture.journalDir, config.capture.journalMaxBytes);
+  return {
+    config,
+    logger,
+    instanceRegistry,
+    kernelHttp,
+    metaKernel,
+    knowledgeClientFactory,
+    skillKernel,
+    knowledgeTaskRegistry,
+    captureRunRegistry,
+  };
 }
 
 export type { InstanceEntry };

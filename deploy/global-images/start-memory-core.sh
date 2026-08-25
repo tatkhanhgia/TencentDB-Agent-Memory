@@ -68,8 +68,8 @@ llm:
   baseUrl: "${MEMORY_LLM_BASE_URL:-}"
   apiKey: "${MEMORY_LLM_API_KEY:-}"
   model: "${MEMORY_LLM_MODEL:-}"
-  maxTokens: 32000
-  timeoutMs: 300000
+  maxTokens: ${MEMORY_LLM_MAX_TOKENS:-8192}
+  timeoutMs: ${MEMORY_LLM_TIMEOUT_MS:-300000}
 
 memory:
   # promptMode: chat（默认，通用聊天/教学场景）| code（代码工程场景，
@@ -98,8 +98,19 @@ memory:
     strategy: hybrid
     timeoutMs: 5000
   storeBackend: sqlite
+  # Embedding: mặc định none (tắt vector search, chỉ FTS5 keyword). Bật bằng cách
+  # đặt MEMORY_EMBEDDING_* trong .env — provider bất kỳ khác "none"/"local"/"qclaw"
+  # đều được coi là remote OpenAI-compatible và BẮT BUỘC đủ 4 trường
+  # apiKey/baseUrl/model/dimensions, thiếu một trường là core tự tắt embedding.
   embedding:
-    provider: none
+    provider: "${MEMORY_EMBEDDING_PROVIDER:-none}"
+    baseUrl: "${MEMORY_EMBEDDING_BASE_URL:-}"
+    apiKey: "${MEMORY_EMBEDDING_API_KEY:-}"
+    model: "${MEMORY_EMBEDDING_MODEL:-}"
+    dimensions: ${MEMORY_EMBEDDING_DIMENSIONS:-0}
+    sendDimensions: ${MEMORY_EMBEDDING_SEND_DIMENSIONS:-false}
+    timeoutMs: ${MEMORY_EMBEDDING_TIMEOUT_MS:-30000}
+    recallTimeoutMs: ${MEMORY_EMBEDDING_RECALL_TIMEOUT_MS:-8000}
 
 # ── Skill 模块 ──
 skill:

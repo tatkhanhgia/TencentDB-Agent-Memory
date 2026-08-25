@@ -1038,6 +1038,8 @@ export class TdaiCore {
     store: IMemoryStore,
     embedding: EmbeddingService,
     storage?: StorageAdapter,
+    teamId?: string,
+    agentId?: string,
   ): Promise<{ storedCount: number; creditUsed: number; hasMore: boolean; hasFullBacklog: boolean; profileScopes: string[] }> {
     const useStandaloneRunner = this.cfg.llm.enabled || this.hostAdapter.hostType !== "openclaw";
     const openclawConfig = (!useStandaloneRunner && this.hostAdapter.hostType === "openclaw")
@@ -1066,6 +1068,8 @@ export class TdaiCore {
       pluginDataDir: this.dataDir,
       cfg: this.cfg,
       openclawConfig,
+      teamId,
+      agentId,
       vectorStore: store,
       embeddingService: embedding,
       logger: this.logger,

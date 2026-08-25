@@ -2418,7 +2418,14 @@ export class TdaiGateway {
         core.setInstanceId(instanceId);
         const { store, embedding } = await resolveStore(task);
         const storage = await resolveStorage(task);
-        const result = await core.runL1WithStore(task.sessionId, store, embedding, storage ?? undefined);
+        const result = await core.runL1WithStore(
+          task.sessionId,
+          store,
+          embedding,
+          storage ?? undefined,
+          teamId,
+          agentId,
+        );
 
         (task as any)._l2ProfileScopes = result.profileScopes;
 

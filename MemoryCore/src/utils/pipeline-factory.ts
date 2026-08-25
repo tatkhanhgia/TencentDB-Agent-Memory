@@ -358,6 +358,9 @@ export function createL1Runner(opts: {
   pluginDataDir: string;
   cfg: MemoryTdaiConfig;
   openclawConfig: unknown;
+  /** Agent scope from the L1 task, used for persona checkpoint state. */
+  teamId?: string;
+  agentId?: string;
   vectorStore: IMemoryStore | undefined;
   embeddingService: EmbeddingService | undefined;
   logger: PipelineLogger;
@@ -381,8 +384,15 @@ export function createL1Runner(opts: {
   hasFullBacklog: boolean;
   profileScopes: string[];
 }> {
-  const { pluginDataDir, cfg, openclawConfig, vectorStore, embeddingService, logger, getInstanceId, llmRunner, storage } = opts;
+  const { pluginDataDir, cfg, openclawConfig, teamId, agentId, vectorStore, embeddingService, logger, getInstanceId, llmRunner, storage } = opts;
   const config = openclawConfig as Record<string, unknown> | undefined;
+
+  // L1 cursor and persona counters must share the same per-agent checkpoint
+  // that L2, L3, and PersonaTrigger use. The root checkpoint remains reserved
+  // for legacy/global callers that do not carry an agent scope.
+  const l1Scope = buildIsolationScope({ teamId, agentId });
+  const l1DataDir = scopedDataDirForScope(pluginDataDir, l1Scope);
+  const l1Storage = scopedStorageForScope(storage, l1Scope);
 
   return async ({ sessionKey }) => {
     if (!config && !llmRunner) {
@@ -390,7 +400,7 @@ export function createL1Runner(opts: {
       return { processedCount: 0, storedCount: 0, hasMore: false, hasFullBacklog: false, profileScopes: [] };
     }
 
-    const checkpoint = new CheckpointManager(pluginDataDir, logger, storage);
+    const checkpoint = new CheckpointManager(l1DataDir, logger, l1Storage);
     const cp = await checkpoint.read();
     const runnerState = checkpoint.getRunnerState(cp, sessionKey);
 

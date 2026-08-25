@@ -82,7 +82,7 @@ memory:
     enableDedup: true
     maxMemoriesPerSession: 20
   persona:
-    triggerEveryN: 50
+    triggerEveryN: 20
     maxScenes: 15
   pipeline:
     everyNConversations: 5

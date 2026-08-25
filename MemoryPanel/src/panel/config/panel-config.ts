@@ -34,6 +34,8 @@ export interface PanelConfig {
     journalDir: string;
     journalMaxBytes: number;
     ingestToken: string;
+    distillWatchMs: number;
+    distillPollMs: number;
   };
 }
 
@@ -71,6 +73,8 @@ export function loadPanelConfig(): PanelConfig {
       journalDir: env('CAPTURE_JOURNAL_DIR', '/data/knowledge/capture'),
       journalMaxBytes: envInt('CAPTURE_JOURNAL_MAX_BYTES', 5 * 1024 * 1024),
       ingestToken: env('CAPTURE_INGEST_TOKEN', ''),
+      distillWatchMs: Math.max(1_000, envInt('CAPTURE_DISTILL_WATCH_MS', 20 * 60 * 1000)),
+      distillPollMs: Math.max(1_000, envInt('CAPTURE_DISTILL_POLL_MS', 7_000)),
     },
   };
 }

@@ -5,20 +5,18 @@ import { CheckIcon, ChevronDownIcon, CloseIcon } from 'tea-icons-react';
 import {
   captureApi,
   type CaptureRun,
-  type PipelineLayerStatus,
 } from '@/lib/api/capture';
 import './capture-activity.css';
 
 type LayerKey = 'l1' | 'l2' | 'l3';
-type LayerObservation = { observedAt: number; state: Exclude<PipelineLayerStatus['observed'], 'none'> };
 type FlashState = { count: number; expiresAt: number };
 
 const LAYERS: LayerKey[] = ['l1', 'l2', 'l3'];
 
 function isDistillationActive(run: CaptureRun): boolean {
   return LAYERS.some((layer) => {
-    const observed = run.distill?.[layer]?.observed;
-    return observed === 'queued' || observed === 'running';
+    const state = run.distill?.[layer]?.state;
+    return state === 'queued' || state === 'running';
   });
 }
 
@@ -79,21 +77,9 @@ function runStatusKey(run: CaptureRun): string {
 
 function observedLayers(run: CaptureRun): LayerKey[] {
   return LAYERS.filter((layer) => {
-    const observed = run.distill?.[layer]?.observed;
-    return observed === 'queued' || observed === 'running';
+    const state = run.distill?.[layer]?.state;
+    return state === 'queued' || state === 'running';
   });
-}
-
-function historicalLayers(
-  observations: Map<string, Partial<Record<LayerKey, LayerObservation>>>,
-  runId: string,
-): Array<[LayerKey, LayerObservation]> {
-  const runObservations = observations.get(runId);
-  if (!runObservations) return [];
-  return LAYERS
-    .map((layer) => [layer, runObservations[layer]] as const)
-    .filter((entry): entry is [LayerKey, LayerObservation] => Boolean(entry[1]))
-    .sort((a, b) => a[1].observedAt - b[1].observedAt);
 }
 
 function StatusChip({
@@ -113,14 +99,12 @@ function StatusChip({
 
 function PipelineSummary({
   run,
-  observations,
   t,
 }: {
   run: CaptureRun;
-  observations: Map<string, Partial<Record<LayerKey, LayerObservation>>>;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  if (!run.distill?.observable) {
+  if (!run.distill || !run.distill.observable) {
     return <p className="_capture-state-copy">{t('capture.state.notObservable')}</p>;
   }
   const activeLayers = observedLayers(run);
@@ -128,7 +112,7 @@ function PipelineSummary({
     return (
       <p className="_capture-state-copy">
         {activeLayers.map((layer, index) => {
-          const state = run.distill?.[layer]?.observed;
+          const state = run.distill?.[layer]?.state;
           return (
             <span key={layer}>
               {index > 0 && ' · '}
@@ -141,21 +125,27 @@ function PipelineSummary({
       </p>
     );
   }
-  const history = historicalLayers(observations, run.run_id);
-  if (history.length > 0) {
-    return (
-      <p className="_capture-state-copy _capture-state-copy--amber">
-        {history.map(([layer, observation], index) => (
-          <span key={layer}>
-            {index > 0 && ' · '}
-            {t('capture.state.layerUnknown', {
-              layer: layer.toUpperCase(),
-              time: formatClock(observation.observedAt),
-            })}
-          </span>
-        ))}
-      </p>
-    );
+  const completedLayers = LAYERS.filter((layer) => run.distill?.[layer]?.state === 'left_queue');
+  const unobservedLayers = LAYERS.filter((layer) => run.distill?.[layer]?.state === 'unobserved');
+  if (completedLayers.length > 0 || unobservedLayers.length > 0) {
+    const messages = [
+      ...completedLayers.map((layer) => {
+        const status = run.distill?.[layer];
+        const count = status?.corroboration?.count;
+        return count !== undefined && count > 0
+          ? t('capture.state.layerDone', {
+            layer: layer.toUpperCase(),
+            time: formatClock(status?.left_queue_at),
+            count,
+          })
+          : t('capture.state.layerUnknown', {
+            layer: layer.toUpperCase(),
+            time: formatClock(status?.left_queue_at),
+          });
+      }),
+      ...unobservedLayers.map((layer) => t('capture.state.layerUnobserved', { layer: layer.toUpperCase() })),
+    ];
+    return <p className={`_capture-state-copy ${completedLayers.some((layer) => (run.distill?.[layer]?.corroboration?.count ?? 0) === 0) ? '_capture-state-copy--amber' : ''}`}>{messages.join(' · ')}</p>;
   }
   if (run.status === 'running') {
     return <p className="_capture-state-copy">{t('capture.state.l0Writing')}</p>;
@@ -169,12 +159,10 @@ function PipelineSummary({
 function TimelineStage({
   run,
   layer,
-  observations,
   t,
 }: {
   run: CaptureRun;
   layer: 'l0' | LayerKey;
-  observations: Map<string, Partial<Record<LayerKey, LayerObservation>>>;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
   let state: 'done' | 'active' | 'unknown' | 'unavailable' | 'pending' = 'pending';
@@ -193,28 +181,34 @@ function TimelineStage({
   } else {
     label = t(`capture.timeline.${layer}`);
     const pipeline = run.distill?.[layer];
-    const observed = pipeline?.observed;
     if (!run.distill?.observable) {
       state = 'unavailable';
-    } else if (observed === 'queued' || observed === 'running') {
+    } else if (pipeline?.state === 'queued' || pipeline?.state === 'running') {
       state = 'active';
-      time = observations.get(run.run_id)?.[layer]?.observedAt;
-    } else if (observations.get(run.run_id)?.[layer]) {
-      state = 'unknown';
-      time = observations.get(run.run_id)?.[layer]?.observedAt;
+      time = pipeline?.first_seen_at;
+    } else if (pipeline?.state === 'left_queue') {
+      time = pipeline.left_queue_at;
+      state = (pipeline.corroboration?.count ?? 0) > 0 ? 'done' : 'unknown';
+    } else if (pipeline?.state === 'unobserved') {
+      state = 'pending';
     }
   }
+
+  const corroborationCount = layer !== 'l0' ? run.distill?.[layer]?.corroboration?.count : undefined;
+  const tooltip = layer !== 'l0' && state === 'done'
+    ? t('capture.state.layerDone.title', { count: corroborationCount })
+    : undefined;
 
   return (
     <li className={`_capture-timeline-item _capture-timeline-item--${state}`}>
       <span className="_capture-timeline-icon" aria-hidden="true">
         {state === 'done' ? <CheckIcon size={12} /> : <span />}
       </span>
-      <span className="_capture-timeline-content">
+      <span className="_capture-timeline-content" title={tooltip}>
         <span className="_capture-timeline-label">{label}</span>
         <span className="_capture-timeline-time">
           {state === 'unknown'
-            ? t('capture.timeline.unconfirmed')
+            ? t('capture.timeline.unconfirmedAt', { time: formatClock(time) })
             : state === 'unavailable'
               ? t('capture.timeline.unavailable')
               : time
@@ -229,14 +223,12 @@ function TimelineStage({
 function RunRow({
   run,
   expanded,
-  observations,
   onToggle,
   onOpenL0,
   t,
 }: {
   run: CaptureRun;
   expanded: boolean;
-  observations: Map<string, Partial<Record<LayerKey, LayerObservation>>>;
   onToggle: () => void;
   onOpenL0: () => void;
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -274,14 +266,13 @@ function RunRow({
             <StatusChip run={run} t={t} />
             <span className="_capture-detail-route">{run.route || t('capture.routeUnknown')}</span>
           </div>
-          <PipelineSummary run={run} observations={observations} t={t} />
+          <PipelineSummary run={run} t={t} />
           <ol className="_capture-timeline">
             {(['l0', ...LAYERS] as const).map((layer) => (
               <TimelineStage
                 key={layer}
                 run={run}
                 layer={layer}
-                observations={observations}
                 t={t}
               />
             ))}
@@ -309,28 +300,9 @@ export function CaptureActivity() {
   const [unseenErrors, setUnseenErrors] = useState(0);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [flash, setFlash] = useState<FlashState | null>(null);
-  const [observationVersion, setObservationVersion] = useState(0);
   const previousRunsRef = useRef(new Map<string, CaptureRun>());
   const knownErrorIdsRef = useRef(new Set<string>());
-  const observationsRef = useRef(new Map<string, Partial<Record<LayerKey, LayerObservation>>>());
   const drawerOpenRef = useRef(false);
-
-  const observePipeline = useCallback((nextRuns: CaptureRun[]) => {
-    let changed = false;
-    for (const run of nextRuns) {
-      const previous = observationsRef.current.get(run.run_id) ?? {};
-      const next = { ...previous };
-      for (const layer of LAYERS) {
-        const observed = run.distill?.[layer]?.observed;
-        if ((observed === 'queued' || observed === 'running') && !next[layer]) {
-          next[layer] = { observedAt: Date.now(), state: observed };
-          changed = true;
-        }
-      }
-      observationsRef.current.set(run.run_id, next);
-    }
-    if (changed) setObservationVersion((version) => version + 1);
-  }, []);
 
   const refresh = useCallback(async () => {
     if (document.hidden) return;
@@ -360,13 +332,12 @@ export function CaptureActivity() {
       }
 
       previousRunsRef.current = new Map(nextRuns.map((run) => [run.run_id, run]));
-      observePipeline(nextRuns);
       setRuns(nextRuns);
       setOffline(false);
     } catch {
       setOffline(true);
     }
-  }, [observePipeline]);
+  }, []);
 
   const activeCount = useMemo(
     () => runs.filter((run) => run.status === 'running').length,
@@ -409,10 +380,6 @@ export function CaptureActivity() {
     const timer = window.setTimeout(() => setFlash(null), remaining);
     return () => window.clearTimeout(timer);
   }, [flash]);
-
-  const observations = observationsRef.current;
-  // This dependency keeps detail views fresh when a first kernel observation is recorded.
-  void observationVersion;
 
   const runningRuns = useMemo(() => runs.filter(isRunActive), [runs]);
   const recentRuns = useMemo(() => runs.filter((run) => !isRunActive(run)), [runs]);
@@ -498,7 +465,6 @@ export function CaptureActivity() {
                     key={run.run_id}
                     run={run}
                     expanded={expandedRunId === run.run_id}
-                    observations={observations}
                     onToggle={() => setExpandedRunId((id) => (id === run.run_id ? null : run.run_id))}
                     onOpenL0={() => openL0(run)}
                     t={t}
@@ -516,7 +482,6 @@ export function CaptureActivity() {
                     key={run.run_id}
                     run={run}
                     expanded={expandedRunId === run.run_id}
-                    observations={observations}
                     onToggle={() => setExpandedRunId((id) => (id === run.run_id ? null : run.run_id))}
                     onOpenL0={() => openL0(run)}
                     t={t}

@@ -13,6 +13,7 @@ import type { KnowledgeClientPort } from './kernel/ports/knowledge-client-port.j
 import { HttpKnowledgeClient } from './kernel/adapters/http-knowledge-client.js';
 import { KnowledgeTaskRegistry } from './state/knowledge-task-registry.js';
 import { CaptureRunRegistry } from './state/capture-run-registry.js';
+import { CaptureDistillPoller } from './state/capture-distill-poller.js';
 
 export interface PanelDeps {
   config: PanelConfig;
@@ -26,6 +27,7 @@ export interface PanelDeps {
   /** Knowledge 抽取任务内存态：create 时 stash owner key，callback ready 时取出注册 meta asset。 */
   knowledgeTaskRegistry: KnowledgeTaskRegistry;
   captureRunRegistry: CaptureRunRegistry;
+  captureDistillPoller: CaptureDistillPoller;
 }
 
 export function buildPanelDeps(config: PanelConfig): PanelDeps {
@@ -46,6 +48,13 @@ export function buildPanelDeps(config: PanelConfig): PanelDeps {
   const skillKernel = new FetchSkillKernelAdapter(kernelHttp, config.metadataRemoteTimeoutMs);
   const knowledgeTaskRegistry = new KnowledgeTaskRegistry();
   const captureRunRegistry = new CaptureRunRegistry(config.capture.journalDir, config.capture.journalMaxBytes);
+  const captureDistillPoller = new CaptureDistillPoller({
+    config,
+    instanceRegistry,
+    kernelHttp,
+    captureRunRegistry,
+    logger,
+  });
   return {
     config,
     logger,
@@ -56,6 +65,7 @@ export function buildPanelDeps(config: PanelConfig): PanelDeps {
     skillKernel,
     knowledgeTaskRegistry,
     captureRunRegistry,
+    captureDistillPoller,
   };
 }
 

@@ -7,6 +7,7 @@ import { InstanceRegistry } from '../src/panel/config/instance-registry.js';
 import type { MetaEnvelope } from '../src/panel/kernel/envelope.js';
 import type { PanelDeps } from '../src/panel/panel-deps.js';
 import { CaptureRunRegistry } from '../src/panel/state/capture-run-registry.js';
+import { CaptureDistillPoller } from '../src/panel/state/capture-distill-poller.js';
 import { registerCaptureRoutes } from '../src/panel/http/routes/capture.js';
 
 const SERVICE_ID = 'test-instance';
@@ -28,9 +29,15 @@ function makeDeps(
     return envelope(null, 404);
   });
   const deps = {
-    config: {
-      metadataRemoteTimeoutMs: 1000,
-      capture: { journalDir, journalMaxBytes: 5 * 1024 * 1024, ingestToken: '' },
+      config: {
+        metadataRemoteTimeoutMs: 1000,
+        capture: {
+          journalDir,
+          journalMaxBytes: 5 * 1024 * 1024,
+          ingestToken: '',
+          distillWatchMs: 20 * 60 * 1000,
+          distillPollMs: 1000,
+        },
     },
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn() },
     instanceRegistry: new InstanceRegistry([{
@@ -146,7 +153,7 @@ describe('capture run journal and owner-only list', () => {
   it('is idempotent, keeps terminal state above older events, filters metadata, and replays', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-journal-'));
     try {
-      const { deps } = makeDeps(dir, emptyLayer());
+      const { deps, postEnvelope } = makeDeps(dir, emptyLayer());
       const app = appWith(deps);
       const started = {
         event: 'started', event_seq: 1, run_id: 'run-1', session_id: 'session-1',
@@ -177,6 +184,7 @@ describe('capture run journal and owner-only list', () => {
       expect(listed.status).toBe(200);
       expect(body.data.items[0]).toMatchObject({ status: 'written', written_count: 2 });
       expect(body.data.items[0]?.kind_counts).toEqual({ adr: 1, preference: 0, constraint: 1, other: 0 });
+      expect(postEnvelope).not.toHaveBeenCalledWith('/v2/pipeline/status', expect.anything(), expect.anything());
       const serialized = JSON.stringify(body.data.items[0]);
       expect(serialized).not.toContain('must not persist');
       expect(serialized).not.toContain('/secret');
@@ -204,6 +212,120 @@ describe('capture run journal and owner-only list', () => {
         });
       }
       await expect(stat(join(dir, 'capture-runs.ndjson.1'))).resolves.toBeDefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('server-side distillation watcher', () => {
+  it('persists queued → running → left_queue, corroborates without claiming run attribution, and never downgrades', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-poller-'));
+    try {
+      const { deps, postEnvelope } = makeDeps(dir);
+      const startedAt = new Date(Date.now() - 1000).toISOString();
+      const registry = deps.captureRunRegistry;
+      await registry.ingest({
+        event: 'finished', event_seq: 2, run_id: 'run-poll', session_id: 'session-poll',
+        source: 'test', agent_id: 'agent-1', team_id: 'team-1', user_id: 'user-1', route: 'test',
+        occurred_at: startedAt, status: 'written', written_count: 2,
+      }, { instanceId: SERVICE_ID });
+
+      const snapshots = [
+        { l1: { queued: 1, running: 0, queued_sessions: ['reflect:session-poll'], running_sessions: [], idle: false }, l2: emptyLayer(), l3: emptyLayer() },
+        { l1: { queued: 0, running: 1, queued_sessions: [], running_sessions: ['reflect:session-poll'], idle: false }, l2: emptyLayer(), l3: emptyLayer() },
+        { l1: emptyLayer(), l2: emptyLayer(), l3: emptyLayer() },
+        { l1: { queued: 1, running: 0, queued_sessions: ['reflect:session-poll'], running_sessions: [], idle: false }, l2: emptyLayer(), l3: emptyLayer() },
+      ];
+      postEnvelope.mockImplementation(async (path: string) => {
+        if (path === '/v2/pipeline/status') return envelope(snapshots.shift() ?? snapshots[2]);
+        return envelope({ items: [], total: 3 });
+      });
+      const poller = new CaptureDistillPoller({
+        config: deps.config,
+        instanceRegistry: deps.instanceRegistry,
+        kernelHttp: deps.kernelHttp,
+        captureRunRegistry: registry,
+        logger: deps.logger,
+      });
+
+      await poller.pollOnce();
+      expect(registry.list()[0]?.distill?.l1?.state).toBe('queued');
+      await poller.pollOnce();
+      expect(registry.list()[0]?.distill?.l1?.state).toBe('running');
+      await poller.pollOnce();
+      expect(registry.list()[0]?.distill?.l1).toMatchObject({
+        state: 'left_queue',
+        corroboration: { count: 3 },
+      });
+      const atomicCall = postEnvelope.mock.calls.find(([path]) => path === '/v2/atomic/query');
+      expect(atomicCall?.[1]).toMatchObject({
+        time_start: startedAt,
+        team_id: 'team-1',
+        user_id: 'user-1',
+        agent_id: 'agent-1',
+      });
+
+      await poller.pollOnce();
+      expect(registry.list()[0]?.distill?.l1?.state).toBe('left_queue');
+
+      const replayed = new CaptureRunRegistry(dir);
+      expect(replayed.list()[0]?.distill?.l1).toMatchObject({
+        state: 'left_queue',
+        corroboration: { count: 3 },
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('degrades all layers to unavailable when the kernel status endpoint is unavailable', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-poller-guard-'));
+    try {
+      const { deps, postEnvelope } = makeDeps(dir);
+      await deps.captureRunRegistry.ingest({
+        event: 'finished', event_seq: 1, run_id: 'run-guard', session_id: 'session-guard',
+        source: 'test', agent_id: 'agent-1', route: 'test',
+        occurred_at: new Date().toISOString(), status: 'written', written_count: 1,
+      }, { instanceId: SERVICE_ID });
+      postEnvelope.mockResolvedValueOnce(envelope(null, 503));
+      const poller = new CaptureDistillPoller({
+        config: deps.config,
+        instanceRegistry: deps.instanceRegistry,
+        kernelHttp: deps.kernelHttp,
+        captureRunRegistry: deps.captureRunRegistry,
+        logger: deps.logger,
+      });
+
+      await expect(poller.pollOnce()).resolves.toBeUndefined();
+      expect(deps.captureRunRegistry.list()[0]?.distill).toEqual({ observable: false });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('marks pending layers unobserved after the watch window', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-poller-timeout-'));
+    try {
+      const { deps } = makeDeps(dir);
+      const endedAt = new Date('2026-08-25T01:00:00.000Z').toISOString();
+      await deps.captureRunRegistry.ingest({
+        event: 'finished', event_seq: 1, run_id: 'run-timeout', session_id: 'session-timeout',
+        source: 'test', agent_id: 'agent-1', route: 'test',
+        occurred_at: endedAt, status: 'written', written_count: 1,
+      }, { instanceId: SERVICE_ID });
+      const poller = new CaptureDistillPoller({
+        config: deps.config,
+        instanceRegistry: deps.instanceRegistry,
+        kernelHttp: deps.kernelHttp,
+        captureRunRegistry: deps.captureRunRegistry,
+        logger: deps.logger,
+      });
+
+      await poller.pollOnce(Date.parse(endedAt) + deps.config.capture.distillWatchMs + 1);
+      expect(deps.captureRunRegistry.list()[0]?.distill?.l1?.state).toBe('unobserved');
+      expect(deps.captureRunRegistry.list()[0]?.distill?.l2?.state).toBe('unobserved');
+      expect(deps.captureRunRegistry.list()[0]?.distill?.l3?.state).toBe('unobserved');
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

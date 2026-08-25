@@ -12,6 +12,27 @@ export type CaptureStatus =
 
 export type CaptureEventName = 'started' | 'finished';
 
+export type DistillState = 'pending' | 'queued' | 'running' | 'left_queue' | 'unobserved';
+
+export interface DistillCorroboration {
+  count: number;
+  queried_at: string;
+}
+
+export interface DistillLayerStatus {
+  state: DistillState;
+  first_seen_at: string | null;
+  left_queue_at: string | null;
+  corroboration?: DistillCorroboration;
+}
+
+export interface DistillRunStatus {
+  observable: boolean;
+  l1?: DistillLayerStatus;
+  l2?: DistillLayerStatus;
+  l3?: DistillLayerStatus;
+}
+
 export interface CaptureKindCounts {
   adr: number;
   preference: number;
@@ -24,9 +45,11 @@ export interface CaptureEvent {
   event_seq: number;
   run_id: string;
   session_id: string;
+  instance_id: string | null;
   source: string;
   agent_id: string | null;
   team_id: string | null;
+  user_id: string | null;
   route: string;
   model: string | null;
   occurred_at: string;
@@ -43,6 +66,7 @@ export interface CaptureRun {
   source: string;
   agent_id: string | null;
   team_id: string | null;
+  user_id: string | null;
   route: string;
   model: string | null;
   started_at: string;
@@ -51,6 +75,7 @@ export interface CaptureRun {
   written_count: number;
   kind_counts: CaptureKindCounts;
   error_stage: string | null;
+  distill?: DistillRunStatus;
 }
 
 export interface PipelineLayerStatus {

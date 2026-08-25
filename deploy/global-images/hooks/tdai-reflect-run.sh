@@ -56,7 +56,7 @@ emit_event() {
   local error_stage="$7"
   local payload
   payload="$("$NODE" -e '
-    const [event, seq, runId, sessionId, source, agentId, teamId, route, model, at, status, written, kinds, errorStage] = process.argv.slice(1);
+    const [event, seq, runId, sessionId, source, agentId, teamId, userId, route, model, at, status, written, kinds, errorStage] = process.argv.slice(1);
     let kindCounts = {};
     try { kindCounts = JSON.parse(kinds || "{}"); } catch {}
     process.stdout.write(JSON.stringify({
@@ -67,6 +67,7 @@ emit_event() {
       source,
       agent_id: agentId || null,
       team_id: teamId || null,
+      user_id: userId || null,
       route,
       model: model || null,
       occurred_at: at,
@@ -75,7 +76,7 @@ emit_event() {
       kind_counts: kindCounts,
       error_stage: errorStage || null,
     }));
-  ' "$event_name" "$event_seq" "$RUN_ID" "$SESSION_ID" "$FORMAT" "$EVENT_AGENT_ID" "$EVENT_TEAM_ID" "$ROUTE" "${TDAI_REFLECT_LLM_MODEL:-}" "$occurred_at" "$status" "$written_count" "$kind_counts" "$error_stage")"
+  ' "$event_name" "$event_seq" "$RUN_ID" "$SESSION_ID" "$FORMAT" "$EVENT_AGENT_ID" "$EVENT_TEAM_ID" "$EVENT_USER_ID" "$ROUTE" "${TDAI_REFLECT_LLM_MODEL:-}" "$occurred_at" "$status" "$written_count" "$kind_counts" "$error_stage")"
   curl --max-time 2 -sS -o /dev/null -X POST "${PANEL_URL%/}/api/v1/capture/events" \
     -H "Authorization: Bearer ${PANEL_API_KEY}" \
     -H "x-tdai-service-id: ${TDAI_SERVICE_ID:-default}" \
@@ -110,6 +111,7 @@ PANEL_URL="${TDAI_PANEL_URL:-http://127.0.0.1:8125}"
 PANEL_API_KEY="${TDAI_PANEL_API_KEY:-local}"
 EVENT_AGENT_ID=""
 EVENT_TEAM_ID="${TDAI_TEAM_ID:-}"
+EVENT_USER_ID="${TDAI_USER_ID:-}"
 
 # Per-project write identity — shared resolution with the stdio MCP wrapper
 # (../_identity.sh: .tdai-project.env → folder-name registry match → default)

@@ -25,6 +25,16 @@ interface RawPipelineStatus {
   l3?: RawPipelineLayer;
 }
 
+interface RawAtomicQuery {
+  items?: unknown[];
+  total?: unknown;
+}
+
+interface PipelineReadDeps {
+  kernelHttp: PanelDeps['kernelHttp'];
+  config: Pick<PanelDeps['config'], 'metadataRemoteTimeoutMs'>;
+}
+
 export function registerCaptureRoutes(api: Hono, deps: PanelDeps): void {
   const browserMiddleware = validatePanelMetaHeaders(deps);
   const pipelineHandler = async (c: Context) => {
@@ -48,7 +58,9 @@ export function registerCaptureRoutes(api: Hono, deps: PanelDeps): void {
       return respondControlError(c, 400, 'INVALID_CAPTURE_EVENT');
     }
     try {
-      const result = await deps.captureRunRegistry.ingest(payload);
+      const serviceId = c.req.header('x-tdai-service-id')?.trim() ?? '';
+      const result = await deps.captureRunRegistry.ingest(payload, { instanceId: serviceId });
+      deps.captureDistillPoller?.notify();
       return c.json({
         code: 0,
         message: 'accepted',
@@ -75,23 +87,15 @@ export function registerCaptureRoutes(api: Hono, deps: PanelDeps): void {
     const owned = candidates
       .filter((run) => run.agent_id !== null && ownedAgentIds.has(run.agent_id))
       .slice(0, limit);
-    const items = await Promise.all(
-      owned.map(async (run) => ({
-        ...run,
-        // Correlation happens here, before the response is serialized. The raw
-        // instance-wide session arrays never cross the Panel boundary.
-        distill: await readPipelineStatus(deps, ctx, run.session_id),
-      })),
-    );
-    return jsonEnvelope(c, { items, total: items.length });
+    return jsonEnvelope(c, { items: owned, total: owned.length });
   };
 
   api.get('/capture/runs', browserMiddleware, listHandler);
   api.get('/capture-runs', browserMiddleware, listHandler);
 }
 
-async function readPipelineStatus(
-  deps: PanelDeps,
+export async function readPipelineStatus(
+  deps: PipelineReadDeps,
   ctx: MetaCallContext,
   sessionId?: string,
 ): Promise<PipelineStatusView> {
@@ -118,6 +122,37 @@ async function readPipelineStatus(
   } catch {
     // Feature detection is deliberately quiet: service mode is 404 and old standalone is 503.
     return { observable: false };
+  }
+}
+
+export async function readAtomicCount(
+  deps: PipelineReadDeps,
+  ctx: MetaCallContext,
+  run: Pick<CaptureRun, 'started_at' | 'team_id' | 'user_id' | 'agent_id'>,
+): Promise<number | null> {
+  try {
+    const credentials = toKernelCredentials(
+      ctx,
+      { timeoutMs: deps.config.metadataRemoteTimeoutMs },
+      { omitUserKey: true },
+    );
+    const body = {
+      limit: 1,
+      offset: 0,
+      time_start: run.started_at,
+      ...(run.team_id ? { team_id: run.team_id } : {}),
+      ...(run.user_id ? { user_id: run.user_id } : {}),
+      ...(run.agent_id ? { agent_id: run.agent_id } : {}),
+    };
+    const envelope = await deps.kernelHttp.postEnvelope<RawAtomicQuery>(
+      '/v2/atomic/query',
+      body,
+      credentials,
+    );
+    if (!envelope || envelope.code !== 0 || !envelope.data) return null;
+    return nonNegativeInt(envelope.data.total) || (Array.isArray(envelope.data.items) ? envelope.data.items.length : 0);
+  } catch {
+    return null;
   }
 }
 

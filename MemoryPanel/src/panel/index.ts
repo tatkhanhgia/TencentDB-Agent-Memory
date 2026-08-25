@@ -8,6 +8,7 @@ export function main(): void {
   const config = loadPanelConfig();
   const deps = buildPanelDeps(config);
   const app = buildPanelApp(deps);
+  deps.captureDistillPoller.start();
 
   serve(
     { fetch: app.fetch, hostname: config.server.host, port: config.server.port },
@@ -37,6 +38,7 @@ export function main(): void {
   }
 
   const shutdown = (): void => {
+    deps.captureDistillPoller.stop();
     deps.logger.info('panel shutting down');
     process.exit(0);
   };

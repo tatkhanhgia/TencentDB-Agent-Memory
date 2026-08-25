@@ -36,6 +36,8 @@ export interface PanelConfig {
     ingestToken: string;
     distillWatchMs: number;
     distillPollMs: number;
+    /** A run stuck in `running` past this age is reaped as error/abandoned. */
+    staleRunMs: number;
   };
 }
 
@@ -75,6 +77,7 @@ export function loadPanelConfig(): PanelConfig {
       ingestToken: env('CAPTURE_INGEST_TOKEN', ''),
       distillWatchMs: Math.max(1_000, envInt('CAPTURE_DISTILL_WATCH_MS', 20 * 60 * 1000)),
       distillPollMs: Math.max(1_000, envInt('CAPTURE_DISTILL_POLL_MS', 7_000)),
+      staleRunMs: Math.max(1_000, envInt('CAPTURE_STALE_RUN_MS', 20 * 60 * 1000)),
     },
   };
 }

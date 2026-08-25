@@ -22,6 +22,7 @@ const TERMINAL_STATUSES = new Set<CaptureStatus>([
 ]);
 const EVENT_NAMES = new Set<CaptureEventName>(['started', 'finished']);
 const MAX_TEXT = 512;
+export const ABANDONED_STAGE = 'abandoned';
 
 interface DistillJournalEvent {
   event: 'distill';
@@ -108,6 +109,42 @@ export class CaptureRunRegistry {
         return !isDistillTerminal(run.distill);
       })
       .map((run) => ({ ...this.publicRun(run), instance_id: run.instance_id }));
+  }
+
+  /**
+   * Reaps runs whose process died after `started` and never sent `finished`.
+   * The terminal state is persisted as a real `finished` event so a panel
+   * restart replays it instead of resurrecting the run as `running`.
+   */
+  async expireStaleRuns(now = Date.now(), staleMs = 20 * 60 * 1000): Promise<void> {
+    const candidates = [...this.runs.values()].filter((run) => {
+      if (run.status !== 'running' || run.ended_at) return false;
+      const startedAt = Date.parse(run.started_at);
+      return Number.isFinite(startedAt) && now - startedAt > staleMs;
+    });
+    for (const run of candidates) {
+      const occurredAt = new Date(now).toISOString();
+      await this.ingest({
+        event: 'finished',
+        event_seq: run.last_event_seq + 1,
+        run_id: run.run_id,
+        session_id: run.session_id,
+        instance_id: run.instance_id,
+        source: run.source,
+        agent_id: run.agent_id,
+        team_id: run.team_id,
+        user_id: run.user_id,
+        route: run.route,
+        model: run.model,
+        occurred_at: occurredAt,
+        status: 'error',
+        written_count: run.written_count,
+        kind_counts: run.kind_counts,
+        error_stage: ABANDONED_STAGE,
+      });
+      // Nothing ever distilled for a run that died before writing anything.
+      await this.setDistill(run.run_id, { observable: false }, occurredAt);
+    }
   }
 
   async expireDistillRuns(now = Date.now(), windowMs = 20 * 60 * 1000): Promise<void> {

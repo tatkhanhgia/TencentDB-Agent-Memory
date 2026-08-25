@@ -59,6 +59,7 @@ export class CaptureDistillPoller {
   /** Exposed for deterministic unit and operational smoke tests. */
   async pollOnce(now = Date.now()): Promise<void> {
     const { captureRunRegistry, config } = this.deps;
+    await captureRunRegistry.expireStaleRuns(now, config.capture.staleRunMs);
     await captureRunRegistry.expireDistillRuns(now, config.capture.distillWatchMs);
     const runs = captureRunRegistry.watchableRuns(now, config.capture.distillWatchMs);
     if (runs.length === 0) return;
@@ -187,15 +188,11 @@ export class CaptureDistillPoller {
     } finally {
       this.inFlight = false;
       if (!this.started) return;
-      const hasRuns = this.deps.captureRunRegistry.watchableRuns(
-        Date.now(),
-        this.deps.config.capture.distillWatchMs,
-      ).length > 0;
-      if (this.rerun || hasRuns) {
-        const immediate = this.rerun;
-        this.rerun = false;
-        this.requestPoll(immediate ? 0 : this.deps.config.capture.distillPollMs);
-      }
+      // Keep ticking even with nothing watchable: abandoned runs are only ever
+      // reaped from inside a poll, and they carry no watchable state at all.
+      const immediate = this.rerun;
+      this.rerun = false;
+      this.requestPoll(immediate ? 0 : this.deps.config.capture.distillPollMs);
     }
   }
 }

@@ -37,6 +37,7 @@ function makeDeps(
           ingestToken: '',
           distillWatchMs: 20 * 60 * 1000,
           distillPollMs: 1000,
+          staleRunMs: 20 * 60 * 1000,
         },
     },
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), child: vi.fn() },
@@ -326,6 +327,111 @@ describe('server-side distillation watcher', () => {
       expect(deps.captureRunRegistry.list()[0]?.distill?.l1?.state).toBe('unobserved');
       expect(deps.captureRunRegistry.list()[0]?.distill?.l2?.state).toBe('unobserved');
       expect(deps.captureRunRegistry.list()[0]?.distill?.l3?.state).toBe('unobserved');
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('abandoned capture run reaper', () => {
+  const STARTED_AT = '2026-08-25T03:19:52.000Z';
+  const STALE_MS = 20 * 60 * 1000;
+
+  async function ingestStarted(registry: CaptureRunRegistry, runId: string, startedAt = STARTED_AT) {
+    await registry.ingest({
+      event: 'started', event_seq: 1, run_id: runId, session_id: `session-${runId}`,
+      source: 'claude-code', agent_id: 'agent-1', team_id: 'team-1', user_id: 'user-1',
+      route: 'file', model: 'model-1', occurred_at: startedAt, status: 'running',
+    }, { instanceId: SERVICE_ID });
+  }
+
+  it('turns a run stuck in running into error/abandoned once past the stale window', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-abandoned-'));
+    try {
+      const registry = new CaptureRunRegistry(dir);
+      await ingestStarted(registry, 'run-abandoned');
+      expect(registry.list()[0]).toMatchObject({ status: 'running', ended_at: null });
+
+      const now = Date.parse(STARTED_AT) + STALE_MS + 1;
+      await registry.expireStaleRuns(now, STALE_MS);
+
+      expect(registry.list()[0]).toMatchObject({
+        run_id: 'run-abandoned',
+        status: 'error',
+        error_stage: 'abandoned',
+        ended_at: new Date(now).toISOString(),
+      });
+      // A reaped run must not keep the distill poller busy.
+      expect(registry.list()[0]?.distill).toEqual({ observable: false });
+      expect(registry.watchableRuns(now, STALE_MS)).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('leaves a running run alone while it is still inside the stale window', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-fresh-'));
+    try {
+      const registry = new CaptureRunRegistry(dir);
+      await ingestStarted(registry, 'run-fresh');
+
+      await registry.expireStaleRuns(Date.parse(STARTED_AT) + STALE_MS - 1, STALE_MS);
+
+      expect(registry.list()[0]).toMatchObject({
+        run_id: 'run-fresh',
+        status: 'running',
+        ended_at: null,
+        error_stage: null,
+      });
+      expect(registry.list()[0]?.distill).toBeUndefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('persists the reap to the journal so a fresh registry replays it as terminal', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-abandoned-replay-'));
+    try {
+      const registry = new CaptureRunRegistry(dir);
+      await ingestStarted(registry, 'run-replay');
+      const now = Date.parse(STARTED_AT) + STALE_MS + 1;
+      await registry.expireStaleRuns(now, STALE_MS);
+
+      const replayed = new CaptureRunRegistry(dir);
+      expect(replayed.list()[0]).toMatchObject({
+        run_id: 'run-replay',
+        status: 'error',
+        error_stage: 'abandoned',
+        ended_at: new Date(now).toISOString(),
+      });
+      expect(replayed.list()[0]?.distill).toEqual({ observable: false });
+      // Replaying must not resurrect it as watchable work.
+      expect(replayed.watchableRuns(now, STALE_MS)).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('is driven by the poller before it short-circuits on an empty watch list', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'tdai-capture-abandoned-poll-'));
+    try {
+      const { deps, postEnvelope } = makeDeps(dir);
+      await ingestStarted(deps.captureRunRegistry, 'run-polled');
+      const poller = new CaptureDistillPoller({
+        config: deps.config,
+        instanceRegistry: deps.instanceRegistry,
+        kernelHttp: deps.kernelHttp,
+        captureRunRegistry: deps.captureRunRegistry,
+        logger: deps.logger,
+      });
+
+      await poller.pollOnce(Date.parse(STARTED_AT) + deps.config.capture.staleRunMs + 1);
+
+      expect(deps.captureRunRegistry.list()[0]).toMatchObject({
+        status: 'error',
+        error_stage: 'abandoned',
+      });
+      expect(postEnvelope).not.toHaveBeenCalled();
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -420,7 +420,7 @@ function BoardView({
                     {t('task.agentCount', { count: agentLabels.length })}
                   </span>
                   <span className="_memory-workbench-task-card-time">
-                    {new Date(task.updated_at_ms).toLocaleString()}
+                    {t('task.updatedAt', { time: new Date(task.updated_at_ms).toLocaleString() })}
                   </span>
                 </div>
               </button>

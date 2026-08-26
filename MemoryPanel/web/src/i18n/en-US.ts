@@ -226,6 +226,7 @@ export const enUS = {
   'task.agents.tooltip': 'Active agents:\n{{agents}}',
   'task.peopleCount': '{{count}} people',
   'task.agentCount': '{{count}} Agents',
+  'task.updatedAt': 'Updated {{time}}',
 
   // ===== TaskCreateDialog =====
   'taskCreate.caption': 'New Task',

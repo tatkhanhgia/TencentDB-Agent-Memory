@@ -217,6 +217,7 @@ export const zhCN = {
   'task.agents.tooltip': '实际参与 Agent：\n{{agents}}',
   'task.peopleCount': '{{count}} 人',
   'task.agentCount': '{{count}} 个 Agent',
+  'task.updatedAt': '更新于 {{time}}',
 
   // ===== TaskCreateDialog =====
   'taskCreate.caption': '新建 Task',

@@ -1,0 +1,104 @@
+/* AssetStatePanel — SPEC-M5 R1/R2. Một cỡ duy nhất cho cả 4 trang (PO §3.3). */
+._aes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 16px;
+}
+
+._aes-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 12px;
+  color: var(--tea-color-text-tertiary);
+}
+
+/* Người gọi truyền icon TRẦN; cỡ ấn định ở đây để 4 trang không lệch nhau. */
+._aes-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+._aes-title {
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--tea-color-text-primary);
+}
+
+._aes-desc {
+  margin-top: 4px;
+  max-width: 280px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--tea-color-text-tertiary);
+}
+
+._aes-action {
+  margin-top: 16px;
+}
+
+._aes--error ._aes-icon {
+  color: var(--tea-color-text-error-default);
+}
+
+/* ===== Skeleton ===== */
+._ask--rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+._ask--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+._ask-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--app-radius-sm, 4px);
+}
+
+._ask--grid ._ask-card {
+  padding: 16px;
+  border: 1px solid var(--tea-color-border-primary-default);
+  border-radius: var(--app-radius-md, 6px);
+  background: var(--tea-color-bg-primary-default);
+}
+
+._ask-line {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--tea-color-bg-secondary-default) 0%,
+    var(--tea-color-bg-tertiary-default) 50%,
+    var(--tea-color-bg-secondary-default) 100%
+  );
+  background-size: 200% 100%;
+  animation: _ask-shimmer 1.4s ease-in-out infinite;
+}
+
+._ask-line--primary {
+  width: 60%;
+  height: 14px;
+}
+._ask-line--secondary {
+  width: 85%;
+}
+
+@keyframes _ask-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

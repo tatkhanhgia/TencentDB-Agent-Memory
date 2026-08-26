@@ -28,6 +28,8 @@ import {
   UsergroupIcon,
   ViewListIcon,
   ViewModuleIcon,
+  SearchIcon,
+  ErrorCircleIcon,
 } from 'tea-icons-react';
 import { knowledgeApi, type CodeGraphDetail } from '@/lib/knowledge-api';
 import { useTeams, useAgents } from '@/services';
@@ -36,6 +38,7 @@ import AllocateAssetDialog from '@/pages/ResourcePage/components/AllocateAssetDi
 import { readAuth } from '@/components/LoginGate';
 import { tea } from '@/lib/tea-bridge';
 import { AssetPageHeader } from '@/pages/ResourcePage/components/AssetPageHeader';
+import { AssetStatePanel, AssetSkeleton } from '@/pages/ResourcePage/components/AssetStatePanel';
 import './code-sources-panel.css';
 
 // Markdown 渲染排版（内容排版，非 Tea 组件替换范围）——保留原实现，见 design-system 例外条款。
@@ -210,6 +213,7 @@ export default function CodeSourcesPanel() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<CodeGraphDetail[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [scopeTab, setScopeTab] = useState<ScopeTab>('team');
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -357,6 +361,7 @@ export default function CodeSourcesPanel() {
     }
     const seq = ++fetchSeqRef.current;
     setLoading(true);
+    setLoadError(null);
     // 立即清空旧数据 —— 否则切 tab 时会先看到上一个 tab 的列表，
     // 新数据到了才突然替换，视觉上就是"闪一下"。
     setSources([]);
@@ -369,6 +374,7 @@ export default function CodeSourcesPanel() {
     } catch (e: any) {
       if (seq !== fetchSeqRef.current) return;
       tea.notify.error(e);
+      setLoadError(e?.message ?? String(e));
       setSources([]);
     } finally {
       if (seq === fetchSeqRef.current) setLoading(false);
@@ -808,20 +814,29 @@ export default function CodeSourcesPanel() {
           </Table.ActionPanel>
 
           {loading ? (
-            <StatusTip status="loading" />
+            <AssetSkeleton variant="grid" count={6} />
+          ) : loadError != null ? (
+            <AssetStatePanel
+              tone="error"
+              icon={<ErrorCircleIcon />}
+              title={t('common.error.title')}
+              desc={t('common.error.desc')}
+              action={<Button type="primary" onClick={() => void fetchSources()}>{t('common.retry')}</Button>}
+            />
           ) : displaySources.length === 0 ? (
-            <StatusTip
-              status="empty"
-              emptyText={
-                <div className="_asset-code-empty">
-                  <CodeIcon size="large" />
-                  <Text>{t('code.empty.title')}</Text>
-                  <Text theme="label">{t('code.empty.desc')}</Text>
-                </div>
-              }
+            <AssetStatePanel
+              icon={<CodeIcon />}
+              title={t('code.empty.title')}
+              desc={t('code.empty.desc')}
+              action={<Button type="primary" onClick={() => setShowRegister(true)}>{t('code.register')}</Button>}
             />
           ) : filteredSources.length === 0 ? (
-            <StatusTip status="empty" emptyText={t('code.empty.filtered')} />
+            <AssetStatePanel
+              tone="filtered"
+              icon={<SearchIcon />}
+              title={t('code.empty.filtered')}
+              desc={t('code.empty.filtered.desc')}
+            />
           ) : viewMode === 'card' ? (
             <div className="_codelist-grid">
               {filteredSources.map((source) => {

@@ -13,6 +13,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { AssetSkeleton } from './AssetStatePanel';
 import './asset-list-panel.css';
 
 /* ── 面板 ── */
@@ -38,6 +39,8 @@ interface AssetListPanelProps<T> {
   isItemDisabled?: (item: T) => boolean;
   /** 空态文本 */
   emptyText?: ReactNode;
+  /** Khối lỗi tải; có giá trị thì thắng cả empty lẫn list. */
+  error?: ReactNode;
 }
 
 export function AssetListPanel<T>({
@@ -51,6 +54,7 @@ export function AssetListPanel<T>({
   renderItem,
   isItemDisabled,
   emptyText,
+  error,
 }: AssetListPanelProps<T>) {
   return (
     <div className="_alp">
@@ -62,14 +66,9 @@ export function AssetListPanel<T>({
       </div>
 
       {loading ? (
-        <div className="_alp-items">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="_alp-item _alp-skeleton">
-              <div className="_alp-skeleton-line _alp-skeleton-primary" />
-              <div className="_alp-skeleton-line _alp-skeleton-secondary" />
-            </div>
-          ))}
-        </div>
+        <AssetSkeleton variant="rows" count={4} />
+      ) : error != null ? (
+        <div className="_alp-empty">{error}</div>
       ) : items.length === 0 ? (
         <div className="_alp-empty">{emptyText}</div>
       ) : (

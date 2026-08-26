@@ -774,7 +774,7 @@ export async function handleChatCompletions(
     if (memCmd && isMemCommandAllowed(config.memCommand, memCmd.command)) {
       // 会话未初始化时，命令不可用（同 anthropic 侧提示）
       if (!sessionInfo || injectedSkipped) {
-        const errText = `⚠️ 会话未初始化，命令不可用。请先完成 session 初始化（选择 Team/Agent）后重试。`;
+        const errText = `⚠️ Session not initialized — command unavailable. Complete session setup (select Team/Agent) and try again.`;
         const errResponse = buildMemResponse(errText, {
           protocol: "openai",
           stream: isStream,

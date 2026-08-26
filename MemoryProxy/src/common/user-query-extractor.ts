@@ -31,11 +31,15 @@
  * 抓包结论。
  */
 
+import {
+  LEGACY_SESSION_INIT_TITLE_MARKER,
+  SESSION_INIT_TITLE_MARKER,
+} from "../session/labels.js";
+
 /**
- * 会话初始化（选择 Team / Agent / 任务）表单问答的标题标记。
- * 用于剥离残留的标题行；真实用户输入不受影响。
+ * Session-init form title markers (EN + legacy ZH) — strip leftover title lines.
  */
-const SESSION_INIT_TITLE_MARKER = "会话初始化";
+const SESSION_INIT_TITLE_MARKERS = [SESSION_INIT_TITLE_MARKER, LEGACY_SESSION_INIT_TITLE_MARKER];
 
 /**
  * Claude Code CLI 用 role=user 塞进对话流的"内部辅助 prompt"识别器。
@@ -167,7 +171,7 @@ export function extractUserQueryText(raw: string): string {
   // 2e) 残留的会话初始化表单标题行（如「会话初始化 — 选择 Agent 与任务」）
   text = text
     .split("\n")
-    .filter((line) => !line.includes(SESSION_INIT_TITLE_MARKER))
+    .filter((line) => !SESSION_INIT_TITLE_MARKERS.some((m) => line.includes(m)))
     .join("\n");
 
   // 2f) 折叠多余空行（前面剥除后可能留下大段空行）

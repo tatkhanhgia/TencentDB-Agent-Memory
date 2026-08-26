@@ -1,0 +1,15 @@
+# Workspace Protocol — TencentDB-Agent-Memory
+
+<!-- PASEO_WORKSPACE_PROTOCOL_VERSION: 3 -->
+
+- identity: `owner=Human/project owner; version=1; last_reviewed=2026-08-17; applies_to=repository root`
+- project risk/protected areas: risk class `agent-memory-and-credentials`; protected: `.env` and LLM keys, MemoryCore/MemoryHub/Proxy runtime data, `workspace/`, published SDK/package identity, and live local stack ports (panel default 8125). Do not leak memory contents, credentials, or rewrite another agent's stored persona.
+- default topology: Lead-direct for exact tiny task (docs, one-module fix). Add a Peer when a change crosses MemoryCore / MemoryPanel / MemoryKnowledge / MemoryProxy / SDK, or when independent review of memory extraction or credential handling is needed. Supervisor only under exact Human mandate.
+- ownership/hotspots: one write Owner per moving scope. `MemoryCore`, `MemoryPanel`, `MemoryKnowledge`, `MemoryProxy`, `sdk/memory-core`, and `deploy/global-images` are coupled: protocol, env, and image/start scripts can silently change another module's runtime. Name the shared surface before delegation.
+- routing defaults: discover then pin provider/model/effort in the bounded assignment; no silent fallback; every Peer route has reason, scope, and expiry.
+- issue tracker: Beads Central là durable issue/work graph bắt buộc cho Lead, Peer và Supervisor. Mỗi role gọi `beads_status` khi bắt đầu assignment, dùng đúng project do Paseo bind, đọc issue liên quan trước action và ghi authoritative readback ở material handoff; Central unavailable thì mutation `BLOCKED` và issue state giữ `UNKNOWN`, việc inspect không mutation vẫn tiếp tục, không fallback native `bd`/tracker khác. Lead create/update và chỉ close sau verdict; mutating Peer claim/update exact granted issue và dùng `discoveredFrom`; read-only Peer không cần issue grant để inspect; Supervisor read-only.
+- existing harness: root `CONTRIBUTING.md`, `INSTALL.md` / `INSTALL_CN.md`, module READMEs, and `.gitignore` (blocks `.env`, `workspace/`, `node_modules`). Node.js `>= 22.16`. This protocol defers contribution flow to CONTRIBUTING and install/run to INSTALL.md.
+- project policy: `none`; activate an exact package + version + scope + authority + conflict rule only by Human decision or a new protocol revision.
+- review/evidence: focused checks and current diff by default; run only the touched module's tests; independent review for memory-pipeline, credential, or deploy-script changes; Lead/Human keep acceptance.
+- escalation/Human decisions: dùng `REOPEN_REQUEST`, `DEPENDENCY_REQUEST`, `BLOCKED` hoặc `COUNCIL_REQUEST` với evidence và exact decision cần Human chốt. Human keeps LLM/provider credentials, which stack to run locally, data-migration go/no-go, and any publish.
+- repository exceptions/anti-patterns: do not commit `.env` or live memory data; do not run unbounded full-repo test sweeps unless Human asks; do not invent a second memory/control plane; do not self-approve credential, migration, or publish changes.

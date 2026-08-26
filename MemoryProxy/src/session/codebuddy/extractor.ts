@@ -16,10 +16,15 @@
 
 import type { SessionInitData, TeamOption } from "../types.js";
 import { SKIP_LABEL, PATH_SEP, ASSET_CONFIRM_YES, ASSET_CONFIRM_NO } from "./form.js";
+import {
+  LEGACY_ASSET_CONFIRM_NO,
+  LEGACY_ASSET_CONFIRM_YES,
+  LEGACY_SKIP_LABEL,
+} from "../labels.js";
 
 // ── Markers ────────────────────────────────────────────────────────────────────
 
-const SKIP_RE = /跳过|不关联|skip/i;
+const SKIP_RE = /skip|don'?t link|not link|decline|bypass|跳过|不关联/i;
 export const BYPASS_MARKER = "__bypass__" as const;
 
 /**
@@ -31,10 +36,19 @@ export function extractAssetConfirm(content: string): boolean | null {
   const xml = parseQuestionAnswerXml(content);
   const answer = xml?.teamAnswer ?? xml?.agentAnswer ?? xml?.taskAnswer ?? content;
 
-  if (answer.includes(ASSET_CONFIRM_YES) || /是.*关联|关联.*是|确认.*关联/i.test(answer)) {
+  if (
+    answer.includes(ASSET_CONFIRM_YES) ||
+    answer.includes(LEGACY_ASSET_CONFIRM_YES) ||
+    /yes.*bind|bind.*yes|confirm.*bind/i.test(answer) ||
+    /是.*关联|关联.*是|确认.*关联/i.test(answer)
+  ) {
     return true;
   }
-  if (answer.includes(ASSET_CONFIRM_NO) || /否.*不关联|不关联.*否|本次不关联/i.test(answer)) {
+  if (
+    answer.includes(ASSET_CONFIRM_NO) ||
+    answer.includes(LEGACY_ASSET_CONFIRM_NO) ||
+    /no.*skip|skip.*session|否.*不关联|不关联.*否|本次不关联/i.test(answer)
+  ) {
     return false;
   }
   return null;
@@ -120,7 +134,7 @@ export function extractTeamFromOptionText(
   }
 
   // 检测"本次不关联"→ bypass
-  if (teamText && (teamText.includes(SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
+  if (teamText && (teamText.includes(SKIP_LABEL) || teamText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
     return BYPASS_MARKER;
   }
 
@@ -234,7 +248,7 @@ export function extractFromOptionText(
   }
 
   // 检测 Agent 选了"本次不关联"→ bypass
-  if (agentText && (agentText.includes(SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
+  if (agentText && (agentText.includes(SKIP_LABEL) || agentText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
     return { agent_id: BYPASS_MARKER };
   }
 

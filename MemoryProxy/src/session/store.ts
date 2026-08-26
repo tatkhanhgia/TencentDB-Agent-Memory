@@ -27,6 +27,12 @@ import type { SessionInitState, SessionInitStatus, SessionInfo, AgentDetail, Tas
 import { getSessionRepo, type SessionRepo } from "../db/sessionRepo.js";
 import type { BindingRepo, SessionBinding } from "../db/binding-repo.js";
 import type { MetadataClient } from "../meta/client.js";
+import {
+  ASSET_CONFIRM_NO,
+  LEGACY_ASSET_CONFIRM_NO,
+  LEGACY_SESSION_INIT_TITLE_MARKER,
+  SKIP_LABEL,
+} from "./labels.js";
 
 const DEFAULT_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -627,11 +633,21 @@ export class SessionStore {
               const input = block.input as Record<string, unknown> | undefined;
               const question = (input?.question as string) ?? "";
               const options = input?.options as string[] | undefined;
-              if (question.includes("关联") || question.includes("资产")) {
-                // asset_confirm form — check if the next user message said "否"
+              if (
+                question.includes("bind team assets") ||
+                question.includes("关联") ||
+                question.includes("资产")
+              ) {
+                // asset_confirm form — check if the next user message said no
                 continue; // defer to extractAssetConfirm logic via bypass detection
               }
-              if (options?.includes("否，本次不关联") || options?.includes("跳过") || question.includes("SKIP")) {
+              if (
+                options?.includes(ASSET_CONFIRM_NO) ||
+                options?.includes(LEGACY_ASSET_CONFIRM_NO) ||
+                options?.includes(SKIP_LABEL) ||
+                options?.includes("跳过") ||
+                question.includes("SKIP")
+              ) {
                 foundBypass = true;
               }
               if (question.includes("agent") || question.includes("Agent")) {
@@ -648,7 +664,11 @@ export class SessionStore {
       // CodeBuddy: <question_answer> XML in string content
       if (!content.includes("<question_answer")) continue;
       // Check for asset_confirm bypass markers in the assistant form message
-      if (content.includes("否，本次不关联") || content.includes("本次不关联")) {
+      if (
+        content.includes(ASSET_CONFIRM_NO) ||
+        content.includes(LEGACY_ASSET_CONFIRM_NO) ||
+        content.includes("本次不关联")
+      ) {
         foundBypass = true;
       }
       // Extract agent_id from <question_item id="agent">

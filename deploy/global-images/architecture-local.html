@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TDAI Local Stack — Mô hình triển khai</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a2f;
+      --panel2: #18223d;
+      --border: #2a3a5f;
+      --text: #e8eefc;
+      --muted: #9aabcc;
+      --accent: #6ea8ff;
+      --accent2: #7ddeca;
+      --green: #3ecf8e;
+      --orange: #ffb020;
+      --pink: #ff7ab6;
+      --purple: #b794f6;
+      --red: #ff6b6b;
+      --shadow: 0 10px 40px rgba(0,0,0,.35);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1a2b55 0%, transparent 50%),
+        radial-gradient(900px 500px at 100% 0%, #1e3a3a 0%, transparent 45%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 32px 20px 80px; }
+    header h1 {
+      font-size: 1.85rem;
+      margin: 0 0 8px;
+      letter-spacing: -0.02em;
+    }
+    header p { color: var(--muted); margin: 0 0 28px; max-width: 70ch; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 28px; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+    }
+    .badge.ok { border-color: #1f6b4a; color: var(--green); background: #0f2a1f; }
+    .badge.warn { border-color: #6b4f1f; color: var(--orange); background: #2a2110; }
+
+    section {
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 22px 18px;
+      margin-bottom: 18px;
+      box-shadow: var(--shadow);
+    }
+    section h2 {
+      margin: 0 0 6px;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    section h2 .n {
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      background: #243456;
+      color: var(--accent);
+      font-size: 13px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 700;
+    }
+    section .lead { color: var(--muted); margin: 0 0 16px; font-size: 0.95rem; }
+
+    /* Architecture diagram */
+    .arch {
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    @media (min-width: 860px) {
+      .row.two { grid-template-columns: 1.1fr 0.9fr; }
+      .row.three { grid-template-columns: 1fr 1fr 1fr; }
+    }
+    .box {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 14px 12px;
+      background: rgba(8,12,24,.55);
+      position: relative;
+    }
+    .box h3 {
+      margin: 0 0 6px;
+      font-size: 0.98rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .box p { margin: 0; color: var(--muted); font-size: 0.88rem; }
+    .box .port {
+      display: inline-block;
+      margin-top: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: #0d1830;
+      border: 1px solid #2a4578;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+    .box.user { border-color: #3d5a8a; }
+    .box.proxy { border-color: #3d6b8a; }
+    .box.llm { border-color: #3d6b4a; }
+    .box.core { border-color: #5a3d8a; }
+    .box.hub { border-color: #8a5a3d; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      display: inline-block;
+      background: var(--green);
+      box-shadow: 0 0 0 3px rgba(62,207,142,.15);
+    }
+    .arrow {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 2px 0;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .flow-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+      font-size: 0.9rem;
+    }
+    .pill {
+      border-radius: 8px;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      background: #0e1528;
+      font-size: 0.85rem;
+    }
+    .pill.chat { border-color: #2f6f9f; color: #9fd0ff; }
+    .pill.mem { border-color: #6b4f9f; color: #d2b8ff; }
+    .pill.ui { border-color: #9f7a2f; color: #ffd89a; }
+    .chev { color: #5a6f99; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.92rem;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .04em; }
+    tr:last-child td { border-bottom: none; }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86em;
+      background: #0a1224;
+      border: 1px solid #243456;
+      padding: 1px 6px;
+      border-radius: 5px;
+      color: #c5dcff;
+    }
+    .steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+    .steps li {
+      counter-increment: step;
+      position: relative;
+      padding: 12px 12px 12px 52px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 10px;
+      background: rgba(8,12,24,.4);
+    }
+    .steps li::before {
+      content: counter(step);
+      position: absolute;
+      left: 14px; top: 14px;
+      width: 26px; height: 26px;
+      border-radius: 8px;
+      background: #243456;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .steps li strong { display: block; margin-bottom: 4px; }
+    .steps li span { color: var(--muted); font-size: 0.9rem; }
+
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(110,168,255,.08);
+      padding: 12px 14px;
+      border-radius: 0 10px 10px 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-top: 12px;
+    }
+    .callout strong { color: var(--text); }
+    .callout.green { border-left-color: var(--green); background: rgba(62,207,142,.08); }
+    .callout.orange { border-left-color: var(--orange); background: rgba(255,176,32,.08); }
+
+    .grid-2 {
+      display: grid;
+      gap: 12px;
+    }
+    @media (min-width: 760px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+    a { color: var(--accent); }
+    .mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.86rem; }
+    .tag-model {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #10261c; border: 1px solid #1f6b4a; color: var(--green);
+      padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Mô hình triển khai local<br />TencentDB Agent Memory + Claude Code</h1>
+      <p>
+        Trang này mô tả <strong>đúng những gì đang chạy trên máy bạn</strong>:
+        một model local (Gemma), vài service Docker, và Claude Code chỉ “đổi đường”
+        sang proxy thay vì gọi cloud Anthropic.
+      </p>
+      <div class="badge-row">
+        <span class="badge ok">● Full-local</span>
+        <span class="badge ok">1 model: google/gemma-4-e4b</span>
+        <span class="badge">branch: feat/server_team</span>
+        <span class="badge warn">Team Memory Beta</span>
+      </div>
+    </header>
+
+    <!-- 1. Big picture -->
+    <section>
+      <h2><span class="n">1</span> Bức tranh tổng thể</h2>
+      <p class="lead">
+        Bạn không “cài memory vào trong Claude Code”. Bạn chạy một <strong>stack local</strong>,
+        rồi bảo Claude Code: <em>“hãy gọi API ở máy tôi”</em>.
+      </p>
+
+      <div class="arch">
+        <div class="box user">
+          <h3><span class="dot"></span> Bạn + Claude Code CLI</h3>
+          <p>Coding agent trên máy. Sau khi <code>source .claude-code.env</code>, mọi request LLM đi ra local proxy.</p>
+          <span class="port">ANTHROPIC_BASE_URL → :8096</span>
+        </div>
+        <div class="arrow">▼ HTTP Anthropic protocol · /claude-code/default/v1/messages</div>
+
+        <div class="box proxy">
+          <h3><span class="dot"></span> MemoryProxy · tdai-proxy</h3>
+          <p>
+            Cổng vào “trong suốt”: auth user key → chọn Team/Agent/Task →
+            <strong>inject</strong> memory/skill vào prompt → forward model →
+            <strong>ghi</strong> hội thoại về core.
+          </p>
+          <span class="port">localhost:8096</span>
+        </div>
+
+        <div class="row two" style="margin-top:4px">
+          <div>
+            <div class="arrow">▼ chat (mỗi lượt trả lời)</div>
+            <div class="box llm">
+              <h3><span class="dot"></span> LiteLLM → LM Studio</h3>
+              <p>
+                Proxy nói <strong>Anthropic</strong>; LM Studio chỉ nói <strong>OpenAI</strong>.
+                LiteLLM dịch protocol. Model thật chỉ có một:
+              </p>
+              <p style="margin-top:8px"><span class="tag-model">google/gemma-4-e4b</span></p>
+              <span class="port">LiteLLM :4000 · LM Studio :1234</span>
+            </div>
+          </div>
+          <div>
+            <div class="arrow">▼ memory (ghi / đọc / extract)</div>
+            <div class="box core">
+              <h3><span class="dot"></span> MemoryCore · tdai-memory-core</h3>
+              <p>Não lưu trữ: L0 hội thoại → L1 atom → L2 scene → L3 persona. Auth, team/agent meta.</p>
+              <span class="port">localhost:8420</span>
+            </div>
+            <div class="arrow">▼ quản trị</div>
+            <div class="box hub">
+              <h3><span class="dot"></span> Memory Hub · tdai-memory-hub</h3>
+              <p>Giao diện web: login, xem Team/Agent, Chat Memory, Skill, Wiki…</p>
+              <span class="port">Panel :8125 · Knowledge :8424</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout green">
+        <strong>Một model, nhiều service.</strong>
+        Docker containers (proxy/core/hub/litellm) là “phần mềm điều phối”.
+        Inference thật nằm ở LM Studio (Gemma đã load).
+      </div>
+    </section>
+
+    <!-- 2. Why two LLM env groups -->
+    <section>
+      <h2><span class="n">2</span> Vì sao có 2 nhóm LLM trong <code>.env</code>?</h2>
+      <p class="lead">
+        Không phải “phải chạy 2 model”. Là <strong>2 vai trò</strong> — trên máy bạn
+        cả hai đều trỏ về <strong>cùng Gemma</strong>.
+      </p>
+
+      <div class="grid-2">
+        <div class="box proxy">
+          <h3>PROXY_UPSTREAM_*</h3>
+          <p><strong>Ai gọi:</strong> MemoryProxy</p>
+          <p><strong>Khi nào:</strong> mỗi tin nhắn Claude Code cần model trả lời</p>
+          <p><strong>Output:</strong> câu trả lời hiển thị trong terminal Claude Code</p>
+          <p style="margin-top:8px" class="mono">→ host.docker.internal:4000/v1</p>
+        </div>
+        <div class="box core">
+          <h3>MEMORY_LLM_*</h3>
+          <p><strong>Ai gọi:</strong> MemoryCore / Hub (nền)</p>
+          <p><strong>Khi nào:</strong> extract fact, tóm tắt scene, persona, wiki…</p>
+          <p><strong>Output:</strong> memory assets trong DB / panel — không phải chat UI</p>
+          <p style="margin-top:8px" class="mono">→ host.docker.internal:4000/v1</p>
+        </div>
+      </div>
+
+      <div class="callout" style="margin-top:14px">
+        <strong>Vì sao tách config?</strong>
+        Production thường: chat dùng model mạnh/đắt, extract dùng model rẻ.
+        Local: gán cùng một endpoint cho cả hai là ổn.
+      </div>
+    </section>
+
+    <!-- 3. Request lifecycle -->
+    <section>
+      <h2><span class="n">3</span> Một lượt chat đi đâu?</h2>
+      <p class="lead">Ví dụ bạn gõ: “Nhớ giúp: tôi thích TypeScript strict”.</p>
+
+      <ol class="steps">
+        <li>
+          <strong>Claude Code gửi request</strong>
+          <span>Protocol Anthropic <code>POST .../v1/messages</code> tới
+          <code>http://127.0.0.1:8096/claude-code/default</code>, kèm <code>sk-mem-...</code>.</span>
+        </li>
+        <li>
+          <strong>Proxy xác thực + session</strong>
+          <span>Đổi key → user. Lần đầu có thể hỏi Team / Agent / Task
+          (Local Coding Team → coder → default-task). Các lượt sau nhớ binding.</span>
+        </li>
+        <li>
+          <strong>Proxy inject ngữ cảnh</strong>
+          <span>Nhét L2/L3 memory, skill tools, hướng dẫn memory-search vào system prompt
+          (nếu đã có dữ liệu; lúc đầu gần như trống).</span>
+        </li>
+        <li>
+          <strong>Forward sang model local</strong>
+          <span>Proxy → LiteLLM (:4000) → LM Studio (:1234) → Gemma sinh câu trả lời → ngược về Claude Code.</span>
+        </li>
+        <li>
+          <strong>Ghi nhớ nền</strong>
+          <span>Proxy gửi slice hội thoại về MemoryCore (L0). Pipeline sau đó có thể rút L1/L2/L3
+          (cũng bằng MEMORY_LLM = Gemma).</span>
+        </li>
+        <li>
+          <strong>Bạn kiểm tra trên Panel</strong>
+          <span>Mở <a href="http://localhost:8125/" target="_blank" rel="noopener">http://localhost:8125</a>
+          → Chat Memory / Agent profile.</span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- 4. Ports map -->
+    <section>
+      <h2><span class="n">4</span> Bản đồ cổng (ports)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Port</th>
+            <th>Service</th>
+            <th>Bạn dùng để làm gì?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>8125</code></td>
+            <td>Memory Hub Panel</td>
+            <td><strong>Giao diện web</strong> — login bằng <code>.admin-key</code>, xem memory/team</td>
+          </tr>
+          <tr>
+            <td><code>8096</code></td>
+            <td>MemoryProxy</td>
+            <td>Claude Code trỏ <code>ANTHROPIC_BASE_URL</code> vào đây</td>
+          </tr>
+          <tr>
+            <td><code>8420</code></td>
+            <td>MemoryCore</td>
+            <td>API nhớ / auth (proxy và panel gọi; bạn ít chạm trực tiếp)</td>
+          </tr>
+          <tr>
+            <td><code>8424</code></td>
+            <td>Knowledge</td>
+            <td>Wiki / CodeGraph (nâng cao)</td>
+          </tr>
+          <tr>
+            <td><code>4000</code></td>
+            <td>LiteLLM</td>
+            <td>Cầu protocol; Docker containers gọi qua <code>host.docker.internal</code></td>
+          </tr>
+          <tr>
+            <td><code>1234</code></td>
+            <td>LM Studio</td>
+            <td>Model Gemma thật sự chạy inference</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 5. What lives where -->
+    <section>
+      <h2><span class="n">5</span> Cái gì là UI / CLI / nền?</h2>
+      <div class="flow-line">
+        <span class="pill ui">UI Panel :8125</span>
+        <span class="chev">← kiểm tra memory, team, skill</span>
+      </div>
+      <div class="flow-line">
+        <span class="pill chat">CLI Claude Code</span>
+        <span class="chev">← chỗ bạn code / chat hàng ngày</span>
+      </div>
+      <div class="flow-line">
+        <span class="pill mem">Core + Proxy + LiteLLM + LM Studio</span>
+        <span class="chev">← hạ tầng (Docker + app local), không cần mở từng cái mỗi ngày</span>
+      </div>
+
+      <div class="callout orange">
+        <strong>Không có “dashboard model training”.</strong>
+        UI chính là Panel. Chat thật nằm ở Claude Code. Model local quản lý trong app LM Studio.
+      </div>
+    </section>
+
+    <!-- 6. Daily commands -->
+    <section>
+      <h2><span class="n">6</span> Việc bạn làm hàng ngày</h2>
+      <div class="grid-2">
+        <div class="box">
+          <h3>Mở giao diện kiểm tra</h3>
+          <p class="mono" style="margin-top:8px">open http://localhost:8125</p>
+          <p style="margin-top:8px">Login: nội dung file</p>
+          <p class="mono">deploy/global-images/.admin-key</p>
+        </div>
+        <div class="box">
+          <h3>Bật Claude Code qua memory</h3>
+          <p class="mono" style="margin-top:8px; white-space:pre-wrap">cd deploy/global-images
+source .claude-code.env
+claude --model google/gemma-4-e4b</p>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:14px">
+        <strong><code>source .claude-code.env</code></strong> chỉ “bật công tắc” cho terminal hiện tại:
+        trỏ Claude Code sang proxy local + gắn key <code>sk-mem-...</code>.
+        Không start Docker. Stack Docker phải đang chạy sẵn.
+      </div>
+    </section>
+
+    <!-- 7. Mental model -->
+    <section>
+      <h2><span class="n">7</span> Một câu để nhớ</h2>
+      <p style="font-size:1.05rem; margin:0 0 12px">
+        <strong>Claude Code = mặt trước.</strong>
+        <strong>Proxy = trung gian nhớ + inject.</strong>
+        <strong>Core = kho nhớ.</strong>
+        <strong>Panel = kính soi kho nhớ.</strong>
+        <strong>LM Studio = não sinh text (1 model).</strong>
+        <strong>LiteLLM = phiên dịch protocol.</strong>
+      </p>
+      <p class="lead" style="margin:0">
+        Mục tiêu triển khai: coding agent <em>không sửa code</em> vẫn được
+        tự inject / tự ghi nhớ — vì mọi request đi qua proxy.
+      </p>
+    </section>
+
+    <footer>
+      File local ·
+      <span class="mono">deploy/global-images/architecture-local.html</span>
+      · phản ánh setup full-local trên máy bạn
+    </footer>
+  </div>
+</body>
+</html>

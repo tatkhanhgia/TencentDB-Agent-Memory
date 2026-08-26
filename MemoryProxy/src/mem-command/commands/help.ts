@@ -1,26 +1,26 @@
 /**
- * mem:help — 返回支持的命令列表及示例
+ * mem:help — list supported commands and examples
  */
 
 import type { MemCommandContext, MemCommandResult } from "../types.js";
 import { buildMemResponse } from "../response-builder.js";
 
-const HELP_TEXT = `**支持的 mem: 命令：**
+const HELP_TEXT = `**Supported mem: commands:**
 
-| 命令 | 说明 |
-|------|------|
-| \`mem:sync\` | 刷新本次会话的全部资产注入（Skill / 记忆 / Knowledge / Task & Agent 描述） |
-| \`mem:create-skill [提示词]\` | 把本次对话归档为 Skill，后台异步提取 |
-| \`mem:help\` | 显示本帮助 |
+| Command | Description |
+|---------|-------------|
+| \`mem:sync\` | Refresh all asset injections for this session (Skill / Memory / Knowledge / Task & Agent descriptions) |
+| \`mem:create-skill [hint]\` | Archive this conversation as a Skill (async extraction in the background) |
+| \`mem:help\` | Show this help |
 
-**示例：**
+**Examples:**
 \`\`\`
 mem:sync
-mem:create-skill 重点总结数据库迁移步骤和踩坑
+mem:create-skill summarize database migration steps and pitfalls
 mem:help
 \`\`\`
 
-标准格式为 \`mem:<command>\`，冒号后不加空格。命令名大小写不敏感。`;
+Use \`mem:<command>\` with no space after the colon. Command names are case-insensitive.`;
 
 export function getHelpText(): string {
   return HELP_TEXT;

@@ -891,7 +891,7 @@ export async function handleAnthropicMessages(
       // bypass 优化：会话未初始化时，命令不可用
       if (!sessionInfo || injectedSkipped) {
         const thinkingEnabled = !!(body as Record<string, unknown>).thinking;
-        const errText = `⚠️ 会话未初始化，命令不可用。请先完成 session 初始化（选择 Team/Agent）后重试。`;
+        const errText = `⚠️ Session not initialized — command unavailable. Complete session setup (select Team/Agent) and try again.`;
         const errResponse = buildMemResponse(errText, {
           protocol: "anthropic",
           stream: isStream,

@@ -17,3 +17,23 @@
 ._tdai-login-submit.tea-btn {
   width: 100%;
 }
+
+/* ===== M3 §3.6 — cột form theo token, KHÔNG dựng bảng `dark:` song song =====
+ * Panel minh hoạ (`:283`) giữ nguyên 34 hex SVG + màu nền — exemption D13, hình trang
+ * trí luôn tối. Chỉ cột form đổi sang token, và token tự flip nên mỗi utility
+ * `X dark:Y` được thay bằng MỘT class. */
+._login-form-col {
+  background: var(--app-surface-1, #ffffff);
+}
+
+._login-form-divider {
+  border-color: var(--app-border-subtle, #e2e8f0);
+}
+
+._login-text-primary {
+  color: var(--tea-color-text-primary);
+}
+
+._login-text-secondary {
+  color: var(--tea-color-text-secondary);
+}

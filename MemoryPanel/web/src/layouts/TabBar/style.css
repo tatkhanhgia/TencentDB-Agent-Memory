@@ -4,8 +4,8 @@
   gap: 0;
   height: 36px;
   padding: 0 8px;
-  background: var(--tea-color-bg-primary-default);
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  background: var(--app-surface-1, var(--tea-color-bg-primary-default));
+  border-bottom: 1px solid var(--app-border-subtle, var(--tea-color-border-primary-default));
   flex-shrink: 0;
   overflow-x: auto;
 }
@@ -32,10 +32,13 @@
 }
 
 ._memory-tabbar-item--active {
-  color: var(--tea-color-text-primary);
+  /* M3 §3.4: tab active = gạch chân brand 2px + weight 500 + CHỮ BRAND (mockup .tab.active).
+     Gạch chân và weight đã có sẵn; đổi màu chữ sang brand để trạng thái active có
+     kênh màu khớp với pill sidebar. */
+  color: var(--tea-color-text-brand-default);
   font-weight: 500;
   border-bottom-color: var(--tea-color-border-brand-default);
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-1, var(--tea-color-bg-primary-default));
 }
 
 ._memory-tabbar-icon {

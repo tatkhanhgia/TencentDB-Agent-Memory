@@ -58,7 +58,9 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(17, 24, 39, 0.24);
+  /* M3 §3.5: mask khoá cứng -> token, để nó theo theme. Đúng MỘT dòng này và dòng
+     box-shadow bên dưới; cấu trúc chip / Drawer / timeline không đụng (S5 canh). */
+  background: var(--tea-color-bg-mask-default, rgba(17, 24, 39, 0.24));
   cursor: default;
 }
 
@@ -71,7 +73,7 @@
   display: flex;
   flex-direction: column;
   background: var(--tea-color-bg-primary-default);
-  box-shadow: -8px 0 28px rgba(17, 24, 39, 0.12);
+  box-shadow: var(--app-shadow-md, -8px 0 28px rgba(17, 24, 39, 0.12));
 }
 
 ._capture-drawer-header {

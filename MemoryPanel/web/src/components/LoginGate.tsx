@@ -314,17 +314,17 @@ export default function LoginGate({
       </div>
 
       {/* ====== 右侧登录表单面板 ====== */}
-      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col bg-white dark:bg-[#0f172a] overflow-y-auto">
-        <div className="flex lg:hidden items-center gap-2.5 px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+      <div className="w-full lg:w-[480px] xl:w-[520px] flex flex-col _login-form-col overflow-y-auto">
+        <div className="flex lg:hidden items-center gap-2.5 px-6 py-4 border-b _login-form-divider">
           <img src="/logo.png" alt="Memory Hub" className="h-7 w-7" />
-          <span className="text-[14px] font-semibold text-slate-800 dark:text-white/90">
+          <span className="text-[14px] font-semibold _login-text-primary">
             Memory Hub
           </span>
         </div>
 
         <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-14 py-10">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white/95">{t('login.welcome')}</h1>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <h1 className="text-2xl font-bold _login-text-primary">{t('login.welcome')}</h1>
+          <p className="mt-2 text-sm _login-text-secondary">
             {t('login.subtitle')}
           </p>
 

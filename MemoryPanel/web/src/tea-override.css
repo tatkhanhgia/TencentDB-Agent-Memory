@@ -196,6 +196,50 @@ a, .tea-link-external {
   border-radius: 6px;
 }
 
+/* ===== M3 §3.3 — geometry sidebar theo mockup D5 + THANH CHỈ BÁO trái =====
+ * Rail thu gọn: Tea mặc định 48px, mockup chốt 56px.
+ * Item cao 34px (mockup) thay cho 36px của khối trên; radius 6px giữ nguyên.
+ * Cùng tier selector đang dùng, KHÔNG sâu thêm một bậc nào. */
+[data-ui-skin='v2'] .tea-layout__sidebar.is-collapsed,
+[data-ui-skin='v2'] .tea-menu-is-collapsed + .tea-layout__sidebar,
+[data-ui-skin='v2'] .tea-layout__sidebar:has(.tea-menu-is-collapsed) {
+  width: 56px;
+  min-width: 56px;
+}
+
+[data-ui-skin='v2'] .tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item {
+  height: 34px;
+}
+
+/* THANH CHỈ BÁO 3px — câu trả lời cho vấn đề 1.4.1 mà PM nêu sau M2.
+ *
+ * Sau M2 pill chuyển sang soft, nên kênh PHI-MÀU của trạng thái đang-chọn tụt từ
+ * 4,58–5,61 xuống 1,15–1,19. Thanh này khôi phục một kênh phi-màu TUYỆT ĐỐI (hình
+ * dạng + vị trí), cộng với đậm chữ 500, mà KHÔNG quay lại pill đặc — quay lại pill
+ * đặc sẽ kéo dark về 4,58 và phá đúng vế M1 vừa sửa.
+ *
+ * Một token `text-brand-default` flip cả hai theme: light #0052d9 · dark #69a1ff.
+ * Vẽ bằng ::before trên phần tử ĐANG CÓ — CSS thuần, không đổi DOM (A1/A2 do S1/S2 canh). */
+[data-ui-skin='v2'] .tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item {
+  position: relative;
+}
+
+[data-ui-skin='v2'] .tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 18px;
+  border-radius: 0 2px 2px 0;
+  background: var(--tea-color-text-brand-default);
+}
+
+[data-ui-skin='v2'] .tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item {
+  font-weight: 500;
+}
+
 /* 去掉 Tea 默认 icon 上偏移，清除 text 多余 padding，保持与锚点居中对齐 */
 .tea-menu--light .tea-menu__list > li:not(.tea-menu__label) > .tea-menu__item .tea-menu__list-icon {
   margin-top: 0;

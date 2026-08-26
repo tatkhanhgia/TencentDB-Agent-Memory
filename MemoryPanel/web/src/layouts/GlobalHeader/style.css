@@ -4,8 +4,8 @@
   justify-content: space-between;
   height: 48px;
   padding: 0 16px;
-  background: var(--tea-color-bg-primary-default);
-  border-bottom: 1px solid var(--tea-color-border-primary-default);
+  background: var(--app-surface-1, var(--tea-color-bg-primary-default));
+  border-bottom: 1px solid var(--app-border-subtle, var(--tea-color-border-primary-default));
   flex-shrink: 0;
 }
 

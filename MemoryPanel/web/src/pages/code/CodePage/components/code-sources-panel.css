@@ -63,6 +63,10 @@
   gap: 12px;
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._codelist-card {
   display: flex;
   min-width: 0;
@@ -70,9 +74,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   cursor: pointer;
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
 }

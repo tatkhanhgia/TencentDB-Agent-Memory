@@ -85,3 +85,27 @@
   --tea-color-bg-error-active: #fb6e77;
   --tea-color-border-on-bg-error-active: #fb6e77;
 }
+
+/* ===== M2: token bề mặt / elevation (PLAN §4.4, POSITION-TL §D) =====
+   Alias thuần thì để var() tự flip theo theme, không nhân đôi giá trị (D12). */
+:root[data-ui-skin='v2'] {
+  --app-surface-canvas: var(--tea-color-bg-page-default);
+  --app-surface-1: var(--tea-color-bg-primary-default);
+  --app-surface-2: var(--tea-color-bg-secondary-default);
+  --app-surface-3: var(--tea-color-bg-tertiary-default);
+  --app-border-subtle: var(--tea-color-border-primary-default);
+  --app-shadow-xs: var(--tea-shadow-xs);
+  --app-shadow-md: var(--tea-shadow-md);
+}
+
+/* `surface-overlay` và `border-strong` không có token Tea tương ứng một-một nên
+   khai theo theme, giá trị đúng bảng POSITION-TL D. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-surface-overlay: #ffffff;
+  --app-border-strong: #d6dbe3;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-surface-overlay: #2c2c2c;
+  --app-border-strong: #4b4b4b;
+}

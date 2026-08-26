@@ -50,6 +50,35 @@
   border-radius: 0 !important;
 }
 
+/* M2 (SPEC-M2 §3.1): card = surface-1 + viền, KHÔNG bóng — Tea Card mặc định mang
+ * cả border lẫn shadow, vi phạm luật "viền HOẶC bóng xs". Card lồng card = surface-2
+ * không viền. Đổi qua biến component của Tea, không đụng rule `.tea-card` ở trên
+ * (rule đó giữ margin/radius cho skin cũ). */
+[data-ui-skin='v2'] .tea-card {
+  --card-color-bg: var(--app-surface-1);
+  --card-color-border-default: var(--app-border-subtle);
+  --card-box-shadow-default: none;
+}
+
+[data-ui-skin='v2'] .tea-card .tea-card {
+  --card-color-bg: var(--app-surface-2);
+  --card-color-border-default: transparent;
+}
+
+/* M2 (TL-APPROVAL-M2-MAP.md mục (a)): tầng overlay.
+ * `.tea-dialog__inner` và `.tea-drawer` ăn thẳng `bg-primary-default` + `shadow-sm`,
+ * KHÔNG có biến component để đè, nên phải xuống bậc kế tiếp của §4.5 là class gốc —
+ * hai class này là root class ổn định, không phải chuỗi selector cấu trúc.
+ * Light không đổi gì nhìn thấy (#fff đã là overlay light); dark đi từ #202020 lên
+ * #2c2c2c đúng bảng D; bóng sm → md đúng luật "chỉ overlay/drawer dùng md".
+ * `.tea-drawer` phủ cả drawer CaptureActivity — hệ quả tầng adapter CÓ CHỦ ĐÍCH,
+ * không phải lấn M3; mask/timeline riêng của capture vẫn không đụng. */
+[data-ui-skin='v2'] .tea-dialog__inner,
+[data-ui-skin='v2'] .tea-drawer {
+  background-color: var(--app-surface-overlay);
+  box-shadow: var(--app-shadow-md);
+}
+
 /* Tea 的 Content.Body 内层默认 max-width 为 1360px，超过该宽度后会居中留白，
  * 因此右侧业务页的 Card 看起来比 Memory项目窄。公共壳与参照项目一致改为全宽，
  * 由各业务页在确有阅读宽度需求时自行设置局部 max-width。 */
@@ -178,15 +207,14 @@ a, .tea-link-external {
   line-height: 1.4;
 }
 
-/* 选中态：品牌色底 + 白字 */
-.tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item,
-.tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item:hover {
-  background-color: var(--tea-color-bg-brand-default) !important;
-  color: var(--tea-color-text-on-bg-brand-default);
-}
-
-.tea-menu--light .tea-menu__list > li:not(.tea-menu__label).is-selected > .tea-menu__item .tea-menu__text {
-  color: var(--tea-color-text-on-bg-brand-default) !important;
+/* M2: pill active đổi bằng BIẾN, không bằng selector cấu trúc (SPEC-M2 §3.2).
+ * Hai khối `.is-selected` cũ đã được gỡ cùng 2 `!important` của chúng.
+ * Hệ quả CÓ CHỦ ĐÍCH: pill từ solid brand (nền xanh chữ trắng) sang soft
+ * (nền brand-lighten, chữ/icon brand). Cặp mới đo được: light 5,52 · dark 5,51 —
+ * cả hai ≥4,8, và soft còn CÂN BẰNG HƠN solid (solid dark chỉ 4,58). */
+[data-ui-skin='v2'] .tea-menu {
+  --menu-item-bg-active: var(--tea-color-bg-brand-lighten-default);
+  --tea-color-text-on-bg-brand-default: var(--tea-color-text-brand-default);
 }
 
 /* 分组标题与 pill 间距对齐 */

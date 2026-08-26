@@ -271,13 +271,17 @@
   font-size: 12px;
 }
 
+/* M2 luật 6 (TL duyệt riêng): chip xuống MỘT bậc thang vì card cha vừa lên
+   surface-2 — nếu để nguyên thì chip trùng màu card ở CẢ HAI theme (light
+   canvas==surface-2 theo bảng D) và thước sẽ bắt 28 vi phạm mới. Chỉ đổi
+   background; chip giữ viền nên vẫn đọc ra là chip. */
 ._memory-mounted-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
   border: 1px solid var(--tea-color-border-primary-default);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--app-surface-3, var(--tea-color-bg-secondary-default));
   padding: 4px 8px;
 }
 
@@ -350,13 +354,17 @@
   }
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._memory-member-card {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   padding: 8px 12px;
   transition:
     background-color 0.15s,
@@ -954,15 +962,19 @@
   gap: 12px;
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._memory-agents-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   transition:
     background-color 0.15s ease-in-out,
     border-color 0.15s ease-in-out;

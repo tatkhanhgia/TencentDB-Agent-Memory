@@ -46,6 +46,12 @@
 :root[data-ui-skin='v2'][theme-mode='dark'] {
   color-scheme: dark;
   --tea-color-bg-brand-default: #0863e8;
+  /* M6: D11 dua cap brand dark tu 3,69 len 4,59 — qua AA 4,5 nhung bien chi 0,09,
+     va hover con 4,54. Tea khai text-on-bg-brand-default = palette-white-90; nang
+     rieng ve CHU len white-100 dua cap len 5,30 ma KHONG dung toi nen, nen
+     `bg-brand vs card` giu nguyen 3,07. Nang NEN thi keo nguoc: chu tang, nen tut
+     xuong duoi nguong UI 3,0. Chi de o khoi dark; light (5,61) khong dung toi. */
+  --tea-color-text-on-bg-brand-default: var(--tea-color-palette-white-100);
   --tea-color-text-success-default: #b3e8d1;
   --tea-color-text-disabled: rgba(255, 255, 255, 0.5);
 }

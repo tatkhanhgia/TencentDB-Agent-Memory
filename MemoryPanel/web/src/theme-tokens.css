@@ -63,3 +63,25 @@
   --tea-color-bg-brand-active: #0863e8;
   --tea-color-border-on-bg-brand-active: #0863e8;
 }
+
+/* ===== on-error PA3b (JARVIS chốt vá trong M1 — `PM-RULING-ON-ERROR.md`;
+   TL chọn phương án — `TL-DECISION-ON-ERROR.md`) =====
+   Đảo chữ sang đen 90% thay vì đổi nền: blast radius ~6 điểm thay vì 14, và không
+   đụng `bg-error-default`/`-hover` nên progress, alert dot, menu subbadge giữ nguyên.
+
+   Ghim thêm `active` về đúng màu `default` — cùng lý do và cùng tiền lệ với E1: chữ
+   đen trên nền `active` cũ (đỏ sẫm) chỉ được 3,22 light / 3,92 dark, tức vá một cặp
+   trượt lại đẻ ra một cặp trượt khác. Phản hồi khi nhấn vẫn còn qua
+   `transform: scale(0.97)` của `.tea-btn:active`. Ghim cả `border-on-bg-` theo bài B3:
+   `.tea-btn--error:active` tiêu thụ CẢ hai. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --tea-color-text-on-bg-error-default: rgba(0, 0, 0, 0.9);
+  --tea-color-bg-error-active: #f64041;
+  --tea-color-border-on-bg-error-active: #f64041;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-text-on-bg-error-default: rgba(0, 0, 0, 0.9);
+  --tea-color-bg-error-active: #fb6e77;
+  --tea-color-border-on-bg-error-active: #fb6e77;
+}

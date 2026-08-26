@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ConversationAddInput, MemoryReadPort } from "../src/client.js";
 import { LlmError, type Lesson } from "../src/reflect/extract.js";
 import {
+  DEFAULT_MIN_TOOL_USES,
   deriveSessionId,
   EXIT_LLM,
   EXIT_OK,
@@ -109,6 +110,7 @@ describe("parseArgs", () => {
         sessionId: "s1",
         maxLessons: 5,
         minTurns: 0,
+        minToolUses: DEFAULT_MIN_TOOL_USES,
         dryRun: true,
         quiet: true,
       },

@@ -23,6 +23,15 @@ export interface ParsedTranscript {
   lines: number;
   /** Non-blank lines that were not valid JSON. */
   badLines: number;
+  /**
+   * Tool-use blocks seen across the transcript.
+   *
+   * Text turns alone under-describe agentic sessions: an agent can run 44 tools
+   * and summarise in two sentences, which counts as 2 turns while being exactly
+   * the kind of session that produces durable lessons. Callers use this as a
+   * second signal so those sessions are not prefiltered away.
+   */
+  toolUses: number;
 }
 
 /** Total transcript characters handed to the LLM. */
@@ -63,6 +72,17 @@ function textFromContent(content: unknown): string {
   return parts.join("\n\n").trim();
 }
 
+/** Count `{type:"tool_use"}` blocks; the counterpart signal to text turns. */
+function toolUsesInContent(content: unknown): number {
+  if (!Array.isArray(content)) return 0;
+  let n = 0;
+  for (const block of content) {
+    const rec = asRecord(block);
+    if (rec && rec.type === "tool_use") n += 1;
+  }
+  return n;
+}
+
 function nonBlankLines(raw: string): string[] {
   return raw.split(/\r?\n/).filter((line) => line.trim() !== "");
 }
@@ -71,6 +91,7 @@ export function parseClaudeCodeTranscript(raw: string): ParsedTranscript {
   const turns: Turn[] = [];
   let sessionId: string | undefined;
   let badLines = 0;
+  let toolUses = 0;
   const lines = nonBlankLines(raw);
 
   for (const line of lines) {
@@ -91,6 +112,9 @@ export function parseClaudeCodeTranscript(raw: string): ParsedTranscript {
     if (!role) continue;
     const message = asRecord(rec.message);
     if (!message) continue;
+    // Count tools before the text guard below: a tool-only assistant message
+    // carries no text but is still evidence the session did real work.
+    toolUses += toolUsesInContent(message.content);
     const text = textFromContent(message.content);
     if (!text) continue;
 
@@ -100,7 +124,7 @@ export function parseClaudeCodeTranscript(raw: string): ParsedTranscript {
     turns.push(turn);
   }
 
-  const out: ParsedTranscript = { turns, lines: lines.length, badLines };
+  const out: ParsedTranscript = { turns, lines: lines.length, badLines, toolUses };
   if (sessionId) out.sessionId = sessionId;
   return out;
 }
@@ -109,6 +133,7 @@ export function parseGenericJsonl(raw: string): ParsedTranscript {
   const turns: Turn[] = [];
   let sessionId: string | undefined;
   let badLines = 0;
+  let toolUses = 0;
   const lines = nonBlankLines(raw);
 
   for (const line of lines) {
@@ -126,6 +151,7 @@ export function parseGenericJsonl(raw: string): ParsedTranscript {
 
     const role = asRole(rec.role);
     if (!role) continue;
+    toolUses += toolUsesInContent(rec.content);
     const text = textFromContent(rec.content);
     if (!text) continue;
 
@@ -135,7 +161,7 @@ export function parseGenericJsonl(raw: string): ParsedTranscript {
     turns.push(turn);
   }
 
-  const out: ParsedTranscript = { turns, lines: lines.length, badLines };
+  const out: ParsedTranscript = { turns, lines: lines.length, badLines, toolUses };
   if (sessionId) out.sessionId = sessionId;
   return out;
 }

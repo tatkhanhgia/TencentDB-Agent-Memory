@@ -42,6 +42,14 @@ export const EXIT_LLM = 4;
 export const EXIT_WRITE = 5;
 
 export const DEFAULT_MIN_TURNS = 6;
+/**
+ * Escape hatch for agentic sessions. Text turns alone throw away real work:
+ * measured over 34 skipped sessions, a dry run at --min-turns 1 recovered
+ * durable lessons from 4 of 5 sampled ones — sessions with 2-5 text turns but
+ * 24-66 tool calls and hundreds of KB of transcript. At 10, 14 of those 34 are
+ * admitted while every 0-tool session (all under 26 KB) stays filtered out.
+ */
+export const DEFAULT_MIN_TOOL_USES = 10;
 
 export const USAGE = `tdai-reflect --transcript <path> --format <fmt> [options]
 
@@ -57,6 +65,9 @@ Options:
                         sha256 of the transcript path
   --max-lessons <n>     default ${DEFAULT_MAX_LESSONS}, hard cap ${MAX_LESSONS_CAP}
   --min-turns <n>       skip sessions with fewer text turns, default ${DEFAULT_MIN_TURNS}
+  --min-tool-uses <n>   admit a session below --min-turns when it made at least
+                        this many tool calls, default ${DEFAULT_MIN_TOOL_USES};
+                        0 disables the escape hatch
   --dry-run             extract only; print lessons instead of writing
   --quiet               only errors on stderr
   -h, --help            print this help
@@ -76,6 +87,7 @@ export interface ReflectOptions {
   sessionId?: string;
   maxLessons: number;
   minTurns: number;
+  minToolUses: number;
   dryRun: boolean;
   quiet: boolean;
 }
@@ -97,6 +109,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
   let sessionId: string | undefined;
   let maxLessons = DEFAULT_MAX_LESSONS;
   let minTurns = DEFAULT_MIN_TURNS;
+  let minToolUses = DEFAULT_MIN_TOOL_USES;
   let dryRun = false;
   let quiet = false;
 
@@ -119,7 +132,8 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
       case "--format":
       case "--session-id":
       case "--max-lessons":
-      case "--min-turns": {
+      case "--min-turns":
+      case "--min-tool-uses": {
         const value = valueOf(argv[i + 1]);
         if (value === null) return { kind: "error", message: `${arg} requires a value` };
         i += 1;
@@ -138,9 +152,10 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
         } else {
           const n = parseCount(value, 0, 10_000);
           if (n === null) {
-            return { kind: "error", message: "--min-turns must be a non-negative integer" };
+            return { kind: "error", message: `${arg} must be a non-negative integer` };
           }
-          minTurns = n;
+          if (arg === "--min-tool-uses") minToolUses = n;
+          else minTurns = n;
         }
         break;
       }
@@ -163,6 +178,7 @@ export function parseArgs(argv: readonly string[]): ArgsResult {
     format,
     maxLessons,
     minTurns,
+    minToolUses,
     dryRun,
     quiet,
   };
@@ -290,12 +306,24 @@ export async function run(argv: readonly string[], deps: ReflectDeps = {}): Prom
     );
   }
 
-  if (transcript.turns.length < options.minTurns) {
+  const thinTranscript = transcript.turns.length < options.minTurns;
+  const toolHatchOpen =
+    options.minToolUses > 0 && transcript.toolUses >= options.minToolUses;
+
+  if (thinTranscript && !toolHatchOpen) {
     log.warn(
-      `prefilter: ${transcript.turns.length} text turn(s) < ${options.minTurns}, nothing to reflect on`,
+      `prefilter: ${transcript.turns.length} text turn(s) < ${options.minTurns} ` +
+        `and ${transcript.toolUses} tool use(s) < ${options.minToolUses}, nothing to reflect on`,
     );
     emit({ status: "skipped", lessons: [], written: 0 });
     return EXIT_OK;
+  }
+
+  if (thinTranscript) {
+    log.warn(
+      `prefilter: only ${transcript.turns.length} text turn(s) but ${transcript.toolUses} ` +
+        `tool use(s) — agentic session, reflecting anyway`,
+    );
   }
 
   let lessons: Lesson[];

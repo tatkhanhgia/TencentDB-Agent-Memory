@@ -95,7 +95,11 @@ memory:
     enabled: true
     maxResults: 5
     scoreThreshold: 0.3
-    strategy: hybrid
+    # hybrid trộn FTS5 + vector bằng RRF thuần thứ hạng (không trọng số), nên khi
+    # hoà điểm thì FTS luôn thắng vì được xếp trước. Với truy vấn tiếng Việt, FTS5
+    # tách câu thành từng chữ cái rời và khớp rác vẫn giành hạng 1 → kéo kết quả
+    # đúng của vector xuống. Đặt MEMORY_RECALL_STRATEGY=embedding để dùng vector thuần.
+    strategy: ${MEMORY_RECALL_STRATEGY:-hybrid}
     timeoutMs: 5000
   storeBackend: sqlite
   # Embedding: mặc định none (tắt vector search, chỉ FTS5 keyword). Bật bằng cách

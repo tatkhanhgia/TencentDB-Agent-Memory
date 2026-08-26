@@ -207,8 +207,17 @@ const ZH_STOP_WORDS = new Set([
 export function buildFtsQuery(raw: string): string | null {
   const jieba = getJieba();
 
+  // jieba only knows CJK. Fed Latin-script text it falls back to per-character
+  // segmentation, so a Vietnamese query like "móc nối cuối phiên" becomes
+  // "m" OR "ó" OR "c" OR "n" OR "ố" OR "i" — a query that matches almost every
+  // row on incidental letters. Those junk hits then win RRF ties against
+  // genuine vector matches. The Unicode regex below splits Latin scripts
+  // (Vietnamese included) on word boundaries correctly, so route by script.
+  const hasCjk =
+    /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(raw);
+
   let tokens: string[];
-  if (jieba) {
+  if (jieba && hasCjk) {
     // jieba cutForSearch: splits long words further for better recall
     // e.g. "北京烤鸭" → ["北京", "烤鸭", "北京烤鸭"]
     tokens = jieba

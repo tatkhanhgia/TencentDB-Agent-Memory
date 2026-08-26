@@ -1,0 +1,65 @@
+/*
+ * theme-tokens.css — toàn bộ override token v2 của M1 (theme / token / font).
+ *
+ * Nạp SAU `default-pack.css`, `tea-themeable.css` và `index.css`, TRƯỚC
+ * `tea-override.css` (SPEC-M1 §4.1) để thắng token mà vẫn để adapter component
+ * nói lời cuối.
+ *
+ * Mọi thứ ở đây scope dưới [data-ui-skin='v2']: gỡ thuộc tính đó ra là giao diện
+ * cũ quay lại nguyên vẹn — đó là đường lui bắt buộc của M1.
+ */
+
+/* Chưa bật skin v2 thì giữ đúng hành vi cũ: color-scheme light.
+   (Dòng `color-scheme: light` trong `:root` của index.css đã được gỡ ở M1 —
+   luật fallback nằm ở đây, theo selector cụ thể.) */
+:root:not([data-ui-skin='v2']) {
+  color-scheme: light;
+}
+
+/* O3 — bỏ Roboto, dùng system stack của Tea.
+   Dòng `font-family: Roboto, …` trong index.css được GIỮ NGUYÊN và chỉ bị đè
+   (PM ruling B4): specificity (0,2,1) ở đây thắng `body` (0,0,1), nên gỡ
+   data-ui-skin là font cũ trở lại. */
+:root[data-ui-skin='v2'] body {
+  font-family: var(--tea-font-family-default);
+}
+
+/* ===== Light ===== */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  color-scheme: light;
+  --tea-color-text-tertiary: rgba(0, 0, 0, 0.6);
+  --tea-color-text-disabled: rgba(0, 0, 0, 0.55);
+  --tea-color-text-success-default: #055e45;
+  --tea-color-text-on-bg-success-lighten-default: #055e45;
+  --tea-color-text-warning-default: #c04100;
+  --tea-color-text-error-default: #b42c3f;
+}
+
+/* ===== Dark =====
+   O2: KHÔNG khai báo lại --tea-color-text-secondary ở bất kỳ khối theme nào
+   (55% trắng đã đạt AA: 5,84 trên card / 6,08 trên page).
+   B1 đã ĐẢO (PM, 2026-08-26 — `PM-RULING-B1-REVERSED.md`): thiếu token này thì
+   text-success-default ở dark là #07a872 trên nền soft #223b30 = 3,95, TRƯỢT AA;
+   có token thì 8,86. Consumer thật: pill "completed" của Task Board và layer
+   success của Chat Memory. */
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  color-scheme: dark;
+  --tea-color-bg-brand-default: #0863e8;
+  --tea-color-text-success-default: #b3e8d1;
+  --tea-color-text-disabled: rgba(255, 255, 255, 0.5);
+}
+
+/* ===== State patch E1 (JARVIS duyệt 2026-08-26; khối rộng 6 token do PM duyệt — B3) =====
+   `.tea-btn:hover` và `.tea-btn:active` tiêu thụ CẢ `bg-` lẫn `border-on-bg-`;
+   đè mỗi `bg-` sẽ để lại viền màu cũ quanh nút đã đổi màu. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --tea-color-bg-brand-hover: #0048c2;
+  --tea-color-border-on-bg-brand-hover: #0048c2;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-bg-brand-hover: #1265e5;
+  --tea-color-border-on-bg-brand-hover: #1265e5;
+  --tea-color-bg-brand-active: #0863e8;
+  --tea-color-border-on-bg-brand-active: #0863e8;
+}

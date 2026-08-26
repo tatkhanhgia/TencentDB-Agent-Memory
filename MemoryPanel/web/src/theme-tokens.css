@@ -186,3 +186,18 @@
   --app-team-avatar-indigo: #a5b4fc;
   --app-team-avatar-none: #cbd5e1;
 }
+
+/* ===== M6 no N1: chot chet cuoi cung trong src/ =====
+   WikiSourcesPanel.tsx TYPE_COLORS.overview tung tro --tea-color-bg-yellow-default —
+   khong ton tai. Tea khong co ho mau "vang" (chi brand/warning/success/error), nen
+   khai token app moi thay vi muon token Tea. Hue ~55 (vang that) de PHAN BIET voi
+   --tea-color-bg-warning-hover (source, hue cam ~26-27) trong cung chu giai.
+   Doi voi: >=3:1 (nguong UI khong chu, PLAN §4.3) tren CA nen card lan nen page,
+   CA hai theme — do that: light card 4.71 / page 4.27, dark card 12.22 / page 13.32. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-graph-type-overview: #807500;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-graph-type-overview: #f4e225;
+}

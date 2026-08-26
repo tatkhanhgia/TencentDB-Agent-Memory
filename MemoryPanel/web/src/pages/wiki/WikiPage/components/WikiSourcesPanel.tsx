@@ -224,7 +224,7 @@ const TYPE_COLORS: Record<string, string> = {
   source: 'var(--tea-color-bg-warning-hover)',
   query: 'var(--tea-color-bg-success-default)',
   synthesis: 'var(--tea-color-bg-error-default)',
-  overview: 'var(--tea-color-bg-yellow-default)',
+  overview: 'var(--app-graph-type-overview)',
   comparison: 'var(--tea-color-bg-secondary-active)',
   finding: 'var(--tea-color-bg-warning-default)',
   thesis: 'var(--tea-color-bg-error-default)',

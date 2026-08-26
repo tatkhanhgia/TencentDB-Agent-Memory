@@ -44,10 +44,15 @@
 }
 
 /* 内容区卡片去圆角。Tea 默认 Card 会带 margin: 20px auto 0，
- * 让单卡片页面在宽屏下收缩/居中并和布局 gap 叠加；公共页面壳统一接管外间距。 */
+ * 让单卡片页面在宽屏下收缩/居中并和布局 gap 叠加；公共页面壳统一接管外间距。
+ *
+ * M4 pha 1: bỏ `!important` (TL-RULING-RADIUS.md (a)). Tea khai `margin-left/right:auto`
+ * và `border-radius` ngay trong rule `.tea-card` — cùng độ đặc hiệu (0,1,0) — và
+ * `tea-override.css` được import SAU `tea-themeable.css` (`main.tsx:9` → `:12`), nên
+ * thứ tự nguồn đã đủ thắng. Giá trị không đổi: đây là bán kính của SKIN CŨ. */
 .tea-card {
   margin: 0;
-  border-radius: 0 !important;
+  border-radius: 0;
 }
 
 /* M2 (SPEC-M2 §3.1): card = surface-1 + viền, KHÔNG bóng — Tea Card mặc định mang
@@ -63,6 +68,15 @@
 [data-ui-skin='v2'] .tea-card .tea-card {
   --card-color-bg: var(--app-surface-2);
   --card-color-border-default: transparent;
+}
+
+/* M4 (TL-RULING-RADIUS.md (b)): card v2 bo góc theo mockup D5 (`mockup:160,193`
+ * dùng `--radius-lg` cho canvas/card). Rule `.tea-card { border-radius: 0 }` ở trên
+ * GIỮ NGUYÊN — `去圆角` là chủ đích của SKIN CŨ, không phải của v2. Độ đặc hiệu (0,2,0)
+ * thắng (0,1,0) nên không cần `!important`, và scope dưới attribute nên đường lui D14
+ * còn sống: gỡ `data-ui-skin` là card vuông trở lại. */
+[data-ui-skin='v2'] .tea-card {
+  border-radius: var(--app-radius-lg);
 }
 
 /* M2 (TL-APPROVAL-M2-MAP.md mục (a)): tầng overlay.
@@ -151,9 +165,10 @@ body,
   min-height: 100%;
 }
 
-/* 防止 Tea 默认 margin 与 Tailwind 布局冲突 */
+/* 防止 Tea 默认 margin 与 Tailwind 布局冲突.
+ * M4 pha 1: bỏ `!important` — Tea khai `.tea-card+.tea-card{margin-top:…}`, cùng (0,2,0). */
 .tea-card + .tea-card {
-  margin-top: 0 !important;
+  margin-top: 0;
 }
 
 /* 链接颜色 */
@@ -161,10 +176,11 @@ a, .tea-link-external {
   color: var(--tea-color-text-link-default);
 }
 
-/* Tea Alert 在 flex 容器中拉满宽度 */
+/* Tea Alert 在 flex 容器中拉满宽度.
+ * M4 pha 1: bỏ `!important` — Tea khai `margin-left/right:auto` trong `.tea-alert`, cùng (0,1,0). */
 .tea-alert {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 /* Console list body 标准包装器 */

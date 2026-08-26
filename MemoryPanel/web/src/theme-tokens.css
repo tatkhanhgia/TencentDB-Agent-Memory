@@ -109,3 +109,13 @@
   --app-surface-overlay: #2c2c2c;
   --app-border-strong: #4b4b4b;
 }
+
+/* ===== M4: thang bán kính bo góc (TL-RULING-RADIUS.md, mockup D5 §160/193) =====
+   Hình học thuần, không phụ thuộc theme nên khai một khối. Scope dưới
+   `[data-ui-skin='v2']` để đường lui D14 còn sống: gỡ attribute là về skin cũ.
+   Ràng buộc kèm: file nhóm KHÔNG hard-code px bán kính mới — dùng thang này. */
+:root[data-ui-skin='v2'] {
+  --app-radius-sm: 4px;
+  --app-radius-md: 6px;
+  --app-radius-lg: 8px;
+}

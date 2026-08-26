@@ -1,0 +1,20 @@
+{
+  "//": "Type-check only — this project is bundled by tsdown (dts:false) and the container runs source through tsx, so nothing here emits. `npm run typecheck` is the only consumer.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "allowJs": false
+  },
+  "include": ["index.ts", "src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "bin", "**/*.test.ts", "**/__tests__/**"]
+}

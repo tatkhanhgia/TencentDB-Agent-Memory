@@ -1091,7 +1091,7 @@ export class TdaiCore {
   /**
    * Run L2 scene extraction using an externally provided Store.
    */
-  async runL2WithStore(sessionKey: string, store: IMemoryStore, storage?: StorageAdapter, cursor?: string): Promise<{ creditUsed: number; skipped: boolean }> {
+  async runL2WithStore(sessionKey: string, store: IMemoryStore, storage?: StorageAdapter, cursor?: string): Promise<{ creditUsed: number; skipped: boolean; failed: boolean }> {
     const useStandaloneRunner = this.cfg.llm.enabled || this.hostAdapter.hostType !== "openclaw";
     const openclawConfig = (!useStandaloneRunner && this.hostAdapter.hostType === "openclaw")
       ? (this.hostAdapter as { getOpenClawConfig?(): unknown }).getOpenClawConfig?.()
@@ -1127,9 +1127,11 @@ export class TdaiCore {
     });
     const runnerResult = await runner(sessionKey, cursor);
     const creditUsed: number = (llmRunner as any)?.accumulatedCredit ?? 0;
-    // L2 runner returns undefined when no new L1 records, or { skipped: true } on empty extraction
-    const skipped = (runnerResult === undefined && creditUsed === 0) || (runnerResult?.skipped === true);
-    return { creditUsed, skipped };
+    // L2 runner returns undefined when no new L1 records, { skipped: true } on
+    // empty extraction, { failed: true } when extraction ran but errored.
+    const failed = runnerResult?.failed === true;
+    const skipped = !failed && ((runnerResult === undefined && creditUsed === 0) || (runnerResult?.skipped === true));
+    return { creditUsed, skipped, failed };
   }
 
   /**

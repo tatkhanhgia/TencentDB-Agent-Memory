@@ -88,7 +88,7 @@ memory:
     everyNConversations: 5
     enableWarmup: true
     l1IdleTimeoutSeconds: 600
-    l2DelayAfterL1Seconds: 90
+    l2DelayAfterL1Seconds: 180
     l2MinIntervalSeconds: 900
     l2MaxIntervalSeconds: 3600
   recall:

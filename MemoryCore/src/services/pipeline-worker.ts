@@ -85,6 +85,13 @@ export interface PipelineWorkerConfig {
    */
   onL2Complete?: (sessionId: string, instanceId: string, teamId?: string, agentId?: string) => Promise<void>;
   /**
+   * L2 未能真正跑完一轮（L1 仍在执行而被推迟，或抽取本身失败）时的回调，
+   * 用于把 L2 timer 重新武装到 now + l2DelayAfterL1。
+   * 由 server.ts 注入 statefulManager.advanceL2TimerAfterL1（幂等，取更早者）。
+   * 不注入则该轮 L2 只能等下一次 L1 完成或 maxInterval 兜底。
+   */
+  onL2Deferred?: (sessionId: string, instanceId: string, teamId?: string, agentId?: string) => Promise<void>;
+  /**
    * 分布式锁粒度 (default: "session")
    * - "session": L1/L2 per-session 锁, L3 per-instance 锁 (原行为, 最大并发)
    * - "instance": L1/L2/L3 全部 per-instance 锁 (CR-1 临时缓解: 防止同 instance 不同 session
@@ -119,10 +126,11 @@ const TAG = "[pipeline-worker]";
 export class PipelineWorker {
   private backend: IStateBackend;
   private executor: TaskExecutor;
-  private config: Required<Omit<PipelineWorkerConfig, "onDeadLetter" | "onL1Complete" | "onL2Complete" | "permitPool">> & {
+  private config: Required<Omit<PipelineWorkerConfig, "onDeadLetter" | "onL1Complete" | "onL2Complete" | "onL2Deferred" | "permitPool">> & {
     onDeadLetter?: PipelineWorkerConfig["onDeadLetter"];
     onL1Complete?: PipelineWorkerConfig["onL1Complete"];
     onL2Complete?: PipelineWorkerConfig["onL2Complete"];
+    onL2Deferred?: PipelineWorkerConfig["onL2Deferred"];
     permitPool?: PipelineWorkerConfig["permitPool"];
   };
   private logger: Logger;
@@ -156,6 +164,10 @@ export class PipelineWorker {
     lockLostDuringExecution: 0,
     /** H-11 Step 2: number of times an executor was aborted via AbortSignal due to lockLost. */
     executionAborted: 0,
+    /** L2 rounds postponed because an L1 for the same source session was still running. */
+    l2DeferredForL1: 0,
+    /** L2 rounds whose scene extraction failed (LLM error) — previously mislabelled as "no new data". */
+    l2ExtractionFailed: 0,
   };
 
   constructor(backend: IStateBackend, executor: TaskExecutor, config?: PipelineWorkerConfig, logger?: Logger) {
@@ -175,6 +187,7 @@ export class PipelineWorker {
       onDeadLetter: config?.onDeadLetter,
       onL1Complete: config?.onL1Complete,
       onL2Complete: config?.onL2Complete,
+      onL2Deferred: config?.onL2Deferred,
       lockGranularity: config?.lockGranularity ?? "session",
       permitPool: config?.permitPool,
     };
@@ -330,6 +343,37 @@ export class PipelineWorker {
         }
       }
       return;
+    }
+
+    // Step 0.5: L1-in-flight guard for L2 (see getL1GuardLockKey).
+    //
+    // Probe-and-release, not hold: holding the L1 session lock for the whole L2
+    // (which can run to the LLM timeout) would push a queued L1 past its own
+    // lock-conflict deadline and get it *dropped* — a worse bug than the one
+    // being fixed. The residual window between release and the L2 store read is
+    // sub-millisecond, versus the ~l2DelayAfterL1 window it replaces, and if it
+    // is ever hit the outcome is just the old cheap skip.
+    const l1GuardKey = this.getL1GuardLockKey(task);
+    if (l1GuardKey) {
+      const guardFree = await this.backend.acquireLock(l1GuardKey, this.config.workerId, this.config.lockTtlMs);
+      if (!guardFree) {
+        this.metrics.l2DeferredForL1++;
+        this.logger?.debug?.(
+          `${TAG} L2 deferred: L1 still running for ${l1GuardKey} (task=${task.id})`,
+        );
+        const msgId = (task as any)._msgId;
+        if (msgId) {
+          try { await this.backend.ackTask(msgId); } catch { /* best effort */ }
+        }
+        // Re-arm so the round is postponed, never dropped. The running L1 also
+        // re-arms via onL1Complete; this call is the escape hatch for an L1 that
+        // dies, dead-letters, or loses its lock without reaching that callback.
+        await this.rearmL2Timer(task, "deferred");
+        releasePermitOnce();
+        return;
+      }
+      // Prove-and-release: we only needed to know no L1 held it.
+      try { await this.backend.releaseLock(l1GuardKey, this.config.workerId); } catch { /* best effort */ }
     }
 
     // Step 1: 抢分布式锁
@@ -527,6 +571,25 @@ export class PipelineWorker {
   // 级联调度
   // ============================
 
+  /**
+   * Push this task's L2 timer back to `now + l2DelayAfterL1` via the injected
+   * callback (statefulManager.advanceL2TimerAfterL1 — idempotent, keeps the
+   * earlier of the two times). Used when an L2 round did not actually consume
+   * its records, so the round is postponed rather than silently lost.
+   */
+  private async rearmL2Timer(task: TaskPayload, reason: string): Promise<void> {
+    if (!this.config.onL2Deferred) return;
+    const tid = task.teamId ?? (task.data as any)?.teamId;
+    const aid = task.agentId ?? (task.data as any)?.agentId;
+    try {
+      await this.config.onL2Deferred(task.sessionId, task.instanceId, tid, aid);
+    } catch (err) {
+      this.logger?.warn?.(
+        `${TAG} onL2Deferred(${reason}) failed (non-fatal): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   private async cascadeSchedule(task: TaskPayload): Promise<void> {
     const now = Date.now();
     const tid = task.teamId ?? (task.data as any)?.teamId;
@@ -555,6 +618,18 @@ export class PipelineWorker {
     }
 
     if (task.type === "L2") {
+      // Extraction ran but failed (e.g. upstream LLM 502). This is NOT "no new
+      // data": the records are still unconsumed and the cursor did not advance.
+      // Re-arm so the round is retried instead of disappearing silently.
+      if ((task as any)._l2Failed) {
+        this.metrics.l2ExtractionFailed++;
+        this.logger?.warn?.(
+          `${TAG} [${task.instanceId}/${task.sessionId}] L2 extraction failed (records unconsumed, cursor unchanged) → re-arming L2 timer, not enqueuing L3`,
+        );
+        await this.rearmL2Timer(task, "extraction-failed");
+        return;
+      }
+
       // If L2 was skipped (no new L1 records), don't cascade to L3 or arm timer
       if ((task as any)._l2Skipped) {
         this.logger?.debug?.(`${TAG} [${task.instanceId}/${task.sessionId}] L2 skipped (no new data), not arming timer or enqueuing L3`);
@@ -622,6 +697,46 @@ export class PipelineWorker {
    *   互斥。本次升级已通过 keyPrefix 从 tdai_memory → tdai_memory_v2 物理隔离，
    *   新老 pod 走不同 redis 命名空间，无交叉。
    */
+  /**
+   * Lock key an L1 for this L2 task's *source* session would be holding, or
+   * null when there is nothing session-scoped to guard against.
+   *
+   * Why this exists: L1 takes a **session**-level lock (`…:s:{sessionId}`)
+   * while L2 takes an **agent**-level one (`…`). Different keys ⇒ the two never
+   * mutex each other, so an L2 timer that expires mid-L1 reads a store the
+   * running L1 has not finished writing, finds nothing new, and its "skip"
+   * suppresses the L3 cascade for that round.
+   *
+   * Rather than layering a second coordination mechanism on top of the
+   * distributed lock, we probe the *same* key L1 would hold. The L2 sessionId
+   * is `profile:team:T|agent:A|session:<urlencoded source session>`; the source
+   * session is exactly the L1 task's sessionId, so the key is reconstructible.
+   *
+   * Precedence for team/agent mirrors getLockKey() so both sides land on the
+   * identical string. If they ever disagree the probe simply succeeds and we
+   * degrade to the pre-fix behaviour — never worse.
+   */
+  private getL1GuardLockKey(task: TaskPayload): string | null {
+    if (task.type !== "L2") return null;
+    // instance granularity already puts L1 and L2 on one lock — no race to guard.
+    if (this.config.lockGranularity === "instance") return null;
+
+    const m = task.sessionId.match(/^profile:team:([^|]+)\|agent:([^|]+)\|session:(.+)$/);
+    if (!m) return null; // agent-wide L2 (no source session) — nothing to guard.
+
+    let sourceSession: string;
+    try {
+      sourceSession = decodeURIComponent(m[3]);
+    } catch {
+      return null; // malformed key — do not guess.
+    }
+    if (!sourceSession) return null;
+
+    const tid = task.teamId || (task.data as any)?.teamId || m[1];
+    const aid = task.agentId || (task.data as any)?.agentId || m[2];
+    return `pipeline:{${task.instanceId}:${tid}:${aid}}:s:${sourceSession}`;
+  }
+
   private getLockKey(task: TaskPayload): string | null {
     // offload-l1 is lock-free: rename guarantees exclusive file ownership,
     // appendFile is atomic (O_APPEND), and state.json is read-only for L1.

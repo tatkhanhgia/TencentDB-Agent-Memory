@@ -879,6 +879,7 @@ export const zhCN = {
   'agentGrid.card.edit.tooltip.can': '点击查看并编辑该 Agent',
   'agentGrid.card.edit.tooltip.cannot': '仅 owner（{{owner}}）或 team 管理员可编辑',
   'agentGrid.card.ownerUnset': '未设置',
+  'agentGrid.card.updatedAt': '更新时间：{{time}}',
   'agentGrid.table.name': '名称',
   'agentGrid.table.owner': 'Owner',
   'agentGrid.table.assets': '挂载资产',

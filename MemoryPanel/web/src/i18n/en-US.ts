@@ -915,6 +915,7 @@ export const enUS = {
   'agentGrid.card.edit.tooltip.can': 'Click to view and edit this Agent',
   'agentGrid.card.edit.tooltip.cannot': 'Only owner ({{owner}}) or team admin can edit',
   'agentGrid.card.ownerUnset': 'Not set',
+  'agentGrid.card.updatedAt': 'Updated: {{time}}',
   'agentGrid.table.name': 'Name',
   'agentGrid.table.owner': 'Owner',
   'agentGrid.table.assets': 'Mounted Assets',

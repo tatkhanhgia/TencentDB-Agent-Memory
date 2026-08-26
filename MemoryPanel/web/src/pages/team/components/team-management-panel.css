@@ -958,7 +958,7 @@
 
 ._memory-agents-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
 
@@ -969,7 +969,7 @@
 ._memory-agents-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
   padding: 12px;
   border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
@@ -1037,9 +1037,21 @@
 }
 
 ._memory-agents-card-id {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   color: var(--tea-color-text-tertiary);
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
+}
+
+._memory-agents-card-updated {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 ._memory-agents-card-desc,
@@ -1050,8 +1062,11 @@
 }
 
 ._memory-agents-card-desc {
-  min-height: 40px;
+  min-height: 20px;
   line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 ._memory-agents-owner-row {
@@ -1088,8 +1103,8 @@
 
 ._memory-agents-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
 }
 
 ._memory-agents-card-actions {
@@ -1127,13 +1142,13 @@
 }
 
 ._memory-agents-skeleton-card {
-  border: 1px solid var(--tea-color-border, #e7e7e7);
-  border-radius: 8px;
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
+  border-radius: var(--app-radius-sm, 4px);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--tea-color-bg-container, #fff);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
 }
 
 ._memory-agents-skeleton-line {
@@ -1141,9 +1156,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary, #f5f5f5) 0%,
-    var(--tea-color-bg-tertiary, #ececec) 50%,
-    var(--tea-color-bg-secondary, #f5f5f5) 100%
+    var(--tea-color-bg-secondary-default) 0%,
+    var(--tea-color-bg-tertiary-default) 50%,
+    var(--tea-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;

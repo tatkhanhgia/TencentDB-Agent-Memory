@@ -63,6 +63,14 @@ resolve_project_identity() {
     dir="$(dirname "$dir")"
   done
 
+  # Publish the resolved root. Callers that print "create a Panel agent named X"
+  # must use this, not basename "$PWD": identity is matched against the project
+  # root found by walking up to .tdai-project.env or .git, so a session started
+  # in a subdirectory would otherwise be told to create an agent named after the
+  # subdirectory — a name nothing matches, and one that may already belong to a
+  # different agent.
+  export TDAI_PROJECT_ROOT="$project_root"
+
   local registry=""
   registry="$(_tdai_registry_agents)"
 

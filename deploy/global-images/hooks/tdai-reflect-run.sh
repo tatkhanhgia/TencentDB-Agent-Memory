@@ -134,7 +134,7 @@ if [[ "${TDAI_IDENTITY_BOUND:-0}" != "1" && "${TDAI_ALLOW_DEFAULT_IDENTITY:-0}" 
       echo "  fix: correct TDAI_AGENT_ID in .tdai-project.env, or re-activate the agent on the Panel."
     else
       echo "  refused: project is not bound to an agent; not writing to the machine default (${TDAI_AGENT_ID:-?})."
-      echo "  bind it: create a Panel agent named '$(basename "$SESSION_CWD")', or write TDAI_AGENT_ID=agt-… to .tdai-project.env at the project root."
+      echo "  bind it: create a Panel agent named '$(basename "${TDAI_PROJECT_ROOT:-$SESSION_CWD}")', or write TDAI_AGENT_ID=agt-… to .tdai-project.env at ${TDAI_PROJECT_ROOT:-the project root}."
     fi
   } >> "$LOG_FILE" 2>&1
   emit_event finished 2 "$(now_iso)" refused_unbound 0 '{}' identity

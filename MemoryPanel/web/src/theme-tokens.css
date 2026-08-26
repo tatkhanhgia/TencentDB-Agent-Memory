@@ -31,7 +31,8 @@
   --tea-color-text-disabled: rgba(0, 0, 0, 0.55);
   --tea-color-text-success-default: #055e45;
   --tea-color-text-on-bg-success-lighten-default: #055e45;
-  --tea-color-text-warning-default: #c04100;
+  /* M5 R5(A): #c04100 chi dat 4,61 tren nen soft #ffeddf — duoi moc uy quyen 4,8. */
+  --tea-color-text-warning-default: #ad3a00;
   --tea-color-text-error-default: #b42c3f;
 }
 
@@ -118,4 +119,70 @@
   --app-radius-sm: 4px;
   --app-radius-md: 6px;
   --app-radius-lg: 8px;
+}
+
+/* ===== M5 R5(B): text-tertiary o dark =====
+   50% trang tren bg-tertiary #383838 chi 4,24 — TRUOT AA 4,5.
+   Consumer that: <Tag> mac dinh o Workbench/Members. Light da 60% tu M1;
+   thay doi nay chi lam hai theme doi xung. */
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-text-tertiary: hsla(0, 0%, 100%, 0.6);
+}
+
+/* ===== M5 R5: token vien cho chip/pill/tag/avatar =====
+   Benh: nen soft cua Tea chi chenh nen the 1,00–1,19 lan => phan tu bien mat khi
+   nen card doi (M2 khoi theo doi). Chua bang VIEN, khong bang bong (charter M5).
+   Alias thuan: mot he token, gia tri tu lat theo theme (D12) — khong khai hai lan,
+   khong de hex moi. Moi gia tri do duoc deu >=3 (nguong ranh gioi UI, PLAN §4.3)
+   tren CA hai be mat cha va CA hai theme. */
+:root[data-ui-skin='v2'] {
+  --app-chip-border-brand: var(--tea-color-text-brand-default);
+  --app-chip-border-success: var(--tea-color-text-success-default);
+  --app-chip-border-warning: var(--tea-color-text-warning-default);
+  --app-chip-border-error: var(--tea-color-text-error-default);
+  --app-chip-border-neutral: var(--tea-color-text-tertiary);
+}
+
+/* ===== M5 R6 muc 2: nen panel minh hoa cua LoginGate =====
+   Ngoai le D13 mo rong: panel trai cua LoginGate luon toi o ca hai theme, cung ly do
+   mien tru voi 34 hex cua HeroIllustration. Co y KHONG lat theo theme. */
+:root[data-ui-skin='v2'] {
+  --app-login-hero-bg: #0b1120;
+}
+
+/* ===== M5 N3: so mau avatar team (PM-RULING-M5 §2) =====
+   Truoc: 10 class Tailwind `bg-*-500` + chu `--tea-color-text-on-bg-brand-default`.
+   `bg-emerald-500` #10b981 chi dat 2,31:1 o CA hai theme — truot AA nang, va la so
+   te nhat do duoc trong ca dot. Acceptance PO §3.3 doi AA o ca hai theme.
+   Nay: van 10 tong mau cu (nen team khong doi ban sac) nhung day sac o light /
+   keo sac o dark, doi lai chu cho tuong ung. Thap nhat toan bang: 5,02 (amber
+   light) — tren moc uy quyen 4,8. Bang so day du nam trong bao cao Lo B. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-team-avatar-fg: #ffffff;
+  --app-team-avatar-rose: #be123c;
+  --app-team-avatar-amber: #b45309;
+  --app-team-avatar-blue: #1d4ed8;
+  --app-team-avatar-emerald: #047857;
+  --app-team-avatar-violet: #6d28d9;
+  --app-team-avatar-cyan: #155e75;
+  --app-team-avatar-orange: #c2410c;
+  --app-team-avatar-pink: #be185d;
+  --app-team-avatar-teal: #0f766e;
+  --app-team-avatar-indigo: #4338ca;
+  --app-team-avatar-none: #475569;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-team-avatar-fg: #101010;
+  --app-team-avatar-rose: #fda4af;
+  --app-team-avatar-amber: #fcd34d;
+  --app-team-avatar-blue: #93c5fd;
+  --app-team-avatar-emerald: #6ee7b7;
+  --app-team-avatar-violet: #c4b5fd;
+  --app-team-avatar-cyan: #67e8f9;
+  --app-team-avatar-orange: #fdba74;
+  --app-team-avatar-pink: #f9a8d4;
+  --app-team-avatar-teal: #5eead4;
+  --app-team-avatar-indigo: #a5b4fc;
+  --app-team-avatar-none: #cbd5e1;
 }

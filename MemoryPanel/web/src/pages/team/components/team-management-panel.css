@@ -279,7 +279,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid var(--tea-color-border-primary-default);
+  /* M5 R5: vien DA co tu M4 nhung mau chi chenh nen cha 1,10 => vo hinh.
+     Sua o day la doi MAU vien, khong phai them vien. */
+  border: 1px solid var(--app-chip-border-neutral);
   border-radius: 4px;
   background: var(--app-surface-3, var(--tea-color-bg-secondary-default));
   padding: 4px 8px;
@@ -390,11 +392,14 @@
   font-weight: 700;
   background: var(--tea-color-bg-secondary-default);
   color: var(--tea-color-text-secondary);
+  /* M5 R5: box-sizing: border-box (tea-override.css:7) nen 1px vien KHONG noi hop. */
+  border: 1px solid var(--app-chip-border-neutral);
 }
 
 ._memory-member-avatar--owner {
   background: var(--tea-color-bg-warning-lighten-default);
   color: var(--tea-color-text-warning-default);
+  border-color: var(--app-chip-border-warning);
 }
 
 ._memory-member-info {
@@ -411,6 +416,9 @@
   white-space: nowrap;
 }
 
+/* M5 R5: KHONG them vien o day. Day la chu tran, khong co nen — vien quanh mot
+   chu tran la de ra mot hop khong co trong thiet ke. M2 do "nen vs cha = 1,00"
+   la do NHAM doi tuong: chu nay dat 5,94 L / 5,41 D so voi nen, tuc DOC DUOC. */
 ._memory-member-me-tag {
   font-size: 12px;
   color: var(--tea-color-text-brand-default);
@@ -1086,7 +1094,9 @@
 ._memory-agents-owner-tag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
+  /* M5 R5: 1px 6px -> 0 5px, bu dung 1px vien moi o moi canh (cam bay 9). */
+  padding: 0 5px;
+  border: 1px solid var(--app-chip-border-brand);
   border-radius: 4px;
   font-size: 11px;
   line-height: 16px;

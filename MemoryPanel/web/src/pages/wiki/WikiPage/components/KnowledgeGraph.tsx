@@ -39,7 +39,7 @@ function createAtlasPalette(): AtlasPalette {
   const accents = [
     readTeaColor('--tea-color-bg-brand-default'),
     readTeaColor('--tea-color-bg-warning-default'),
-    readTeaColor('--tea-color-bg-amber-default'),
+    readTeaColor('--tea-color-bg-warning-hover'),
     readTeaColor('--tea-color-bg-error-default'),
   ];
   const nodeColors: Record<string, string> = {
@@ -136,7 +136,27 @@ function GraphLoader({ nodes, edges, colorMode, onNodeClick, highlightNode, pale
     forceAtlas2.assign(graph, { iterations: layoutIter(nodes.length), settings: { ...settings, gravity: 1.2, scalingRatio: nodes.length > 400 ? 3.5 : 2.5, strongGravityMode: true, barnesHutOptimize: nodes.length > 50 } });
     loadGraph(graph);
     sigma.refresh();
-  }, [nodes, edges, colorMode, loadGraph, palette, sigma]);
+    // `palette` co y KHONG nam trong deps: doi theme chi duoc doi MAU (effect ngay duoi),
+    // dung lai graph o day se chay lai forceAtlas2 voi toa do ngau nhien moi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, edges, colorMode, loadGraph, sigma]);
+
+  // Doi theme = doi MAU, khong doi CAU TRUC. Dung lai graph o effect tren se chay lai
+  // forceAtlas2 voi toa do ngau nhien moi => bo cuc nhay moi lan lat cong tac.
+  useEffect(() => {
+    const graph = sigma.getGraph();
+    if (!graph.order) return;
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    graph.forEachNode((id) => {
+      const node = byId.get(id);
+      if (!node) return;
+      graph.setNodeAttribute(id, 'color', colorMode === 'community'
+        ? palette.communityColors[node.community % palette.communityColors.length]
+        : nc(node.type, palette));
+    });
+    graph.forEachEdge((key) => graph.setEdgeAttribute(key, 'color', palette.edgeBase));
+    sigma.refresh();
+  }, [palette, colorMode, nodes, sigma]);
 
   useEffect(() => {
     registerEvents({
@@ -145,6 +165,16 @@ function GraphLoader({ nodes, edges, colorMode, onNodeClick, highlightNode, pale
       clickNode: (e) => { const n = nodes.find((n) => n.id === e.node); if (n && onNodeClick) onNodeClick(n); },
     });
   }, [registerEvents, sigma, nodes, onNodeClick]);
+
+  // Ba setting phu thuoc theme KHONG duoc nam trong prop `settings` cua SigmaContainer:
+  // container so sanh sau va tao lai ca instance Sigma khi settings doi, ma
+  // `Sigma.kill()` go sach <canvas> khoi container => smoke S8 `sameCanvas` se do.
+  // Sigma doc ba key nay luc VE nen setSetting la du va khong remount.
+  useEffect(() => {
+    sigma.setSetting('defaultNodeColor', palette.dim);
+    sigma.setSetting('defaultEdgeColor', palette.edgeBase);
+    sigma.setSetting('labelColor', { color: palette.label });
+  }, [palette, sigma]);
 
   useEffect(() => {
     sigma.setSetting("nodeReducer", (node, data) => {
@@ -200,8 +230,13 @@ export default function KnowledgeGraph({ data, loading, onNodeClick, highlightNo
   const [themeRevision, setThemeRevision] = useState(0);
 
   useEffect(() => {
+    // Hop dong theme (D2/PLAN §4.1) dat `theme-mode` tren <html>, KHONG phai <body>.
+    // Quan sat nham node la nguyen nhan cua S8b `M0-S8B-THEME-OBSERVER-BODY`.
     const observer = new MutationObserver(() => setThemeRevision((revision) => revision + 1));
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'theme-mode'] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['theme-mode', 'data-ui-skin', 'class'],
+    });
     return () => observer.disconnect();
   }, []);
 
@@ -276,9 +311,7 @@ export default function KnowledgeGraph({ data, loading, onNodeClick, highlightNo
             labelFont: "system-ui, -apple-system, sans-serif", labelSize: 12, labelWeight: "500",
             labelDensity: (data?.nodes?.length || 0) > 600 ? 0.12 : 0.35, labelGridCellSize: 90,
             labelRenderedSizeThreshold: (data?.nodes?.length || 0) > 600 ? 12 : 7,
-            defaultEdgeType: "line", defaultNodeColor: palette.dim,
-            defaultEdgeColor: palette.edgeBase,
-            labelColor: { color: palette.label }, stagePadding: 40, zIndex: true,
+            defaultEdgeType: "line", stagePadding: 40, zIndex: true,
             minCameraRatio: 0.06, maxCameraRatio: 4,
           }}
         >

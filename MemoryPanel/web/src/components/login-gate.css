@@ -37,3 +37,11 @@
 ._login-text-secondary {
   color: var(--tea-color-text-secondary);
 }
+
+/* Panel trai cua LoginGate: nen toi co dinh, KHONG theo theme — cung ly do mien tru
+   D13 voi 34 hex cua HeroIllustration (hinh minh hoa luon nen toi). Dieu phai sua
+   khong phai la "doi mau theo theme" ma la "bo hex khoi JSX", de moi mau nam trong
+   mot cho tra cuu duoc. */
+._login-hero {
+  background: var(--app-login-hero-bg);
+}

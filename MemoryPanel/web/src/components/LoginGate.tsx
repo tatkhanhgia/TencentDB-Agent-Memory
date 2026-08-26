@@ -280,7 +280,7 @@ export default function LoginGate({
   return (
     <div className="fixed inset-0 z-[100] flex">
       {/* ====== 左侧深色面板 ====== */}
-      <div className="hidden lg:flex flex-col flex-1 bg-[#0b1120] relative overflow-hidden">
+      <div className="hidden lg:flex flex-col flex-1 _login-hero relative overflow-hidden">
         <div className="flex items-center gap-2.5 px-6 py-5">
           <img src="/logo.png" alt="Memory Hub" className="h-8 w-8" />
           <span className="text-[15px] font-semibold text-white/90 tracking-wide">Memory Hub</span>

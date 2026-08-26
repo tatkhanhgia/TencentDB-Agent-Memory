@@ -99,7 +99,10 @@
   flex-shrink: 0;
   font-size: 11px;
   line-height: 16px;
-  padding: 1px 6px;
+  /* M5 R5: 1px 6px -> 0 5px, bu dung 1px vien moi o moi canh de KHONG cao them
+     (cam bay 9 — cam noi hop). */
+  padding: 0 5px;
+  border: 1px solid var(--app-chip-border-neutral);
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -107,11 +110,13 @@
 ._memory-workbench-status-pill--running {
   color: var(--tea-color-text-brand-default);
   background-color: var(--tea-color-bg-brand-lighten-default);
+  border-color: var(--app-chip-border-brand);
 }
 
 ._memory-workbench-status-pill--completed {
   color: var(--tea-color-text-success-default);
   background-color: var(--tea-color-bg-success-lighten-default);
+  border-color: var(--app-chip-border-success);
 }
 
 ._memory-workbench-task-card-title {

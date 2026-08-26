@@ -281,3 +281,23 @@ a, .tea-link-external {
 .tea-menu--light .tea-menu__list > li.tea-menu__label {
   padding-left: 8px;
 }
+
+/* ===== M5 R5: vien cho .tea-tag =====
+   `.tea-tag--soft.*` cua Tea dat border-color BANG chinh mau nen (tea-themeable.css)
+   => tag chi chenh nen the 1,02–1,39 lan, gan nhu vo hinh. De MOT rule doi mau vien,
+   khong dung bong (charter M5 cam), khong dung cau truc DOM cua Tea.
+   Ten class doc tu node_modules/tea-component/es/tag/Tag.js (2.8.0):
+   `tea-tag tea-tag--<variant> tea-tag--<theme> tea-tag--<shape> tea-tag--<size>`;
+   theme `danger` sinh them `tea-tag--error`. Do dac hieu 0,3,0 > 0,2,0 cua Tea. */
+:root[data-ui-skin='v2'] .tea-tag {
+  border-color: var(--app-chip-border-neutral);
+}
+:root[data-ui-skin='v2'] .tea-tag--success {
+  border-color: var(--app-chip-border-success);
+}
+:root[data-ui-skin='v2'] .tea-tag--warning {
+  border-color: var(--app-chip-border-warning);
+}
+:root[data-ui-skin='v2'] .tea-tag--error {
+  border-color: var(--app-chip-border-error);
+}

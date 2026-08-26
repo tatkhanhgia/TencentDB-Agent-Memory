@@ -53,16 +53,6 @@
   color: var(--tea-color-text-primary);
 }
 
-/* ===== 详情面板容器 ===== */
-._memory-detail-panel {
-  min-height: 480px;
-  padding: 16px;
-  border: 1px solid var(--tea-color-border-primary-default);
-  border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
-}
-
 /* ===== Memory 详情区 ===== */
 ._memory-detail-head {
   border-bottom: 1px solid var(--tea-color-border-secondary-default);

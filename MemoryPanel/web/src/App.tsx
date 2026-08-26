@@ -49,8 +49,30 @@ export default function App() {
   const content = (() => {
     if (auth === null) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f172a]">
-          <div className="text-sm text-slate-500 dark:text-slate-400">{t('app.checkingSession')}</div>
+        // PLAN §4.6 / PM-LEDGER-COLOR-CLEANUP mục 6: bỏ 1 hex + 3 utility khoá màu.
+        //
+        // KHÔNG dùng biến thể tối của Tailwind ở đây. Repo không khai `darkMode` trong
+        // `tailwind.config.js`, nên Tailwind rơi về mặc định `media`: biến thể đó nghe
+        // `prefers-color-scheme` của HỆ ĐIỀU HÀNH, KHÔNG nghe `theme-mode` mà app đặt
+        // trên <html>. Đã kiểm trong CSS đã build — nó biên dịch ra một khối
+        // `@media (prefers-color-scheme: dark)`, và cả bundle có 0 rule dùng class
+        // `.dark`. Tức màn này có thể tối trong khi app đang sáng.
+        //
+        // Token Tea flip theo `theme-mode` nên đi đúng hệ theme. Hai token dưới đây đã
+        // kiểm CÓ THẬT trong `default-pack.css`, cả khối light lẫn dark (bug ở mục 4 của
+        // sổ là dùng token KHÔNG tồn tại rồi rơi về fallback sáng); fallback giữ giá trị
+        // light của chính token đó.
+        //
+        // Lưu ý cho người sửa sau: `content` của Tailwind quét cả comment trong `src`,
+        // nên ĐỪNG viết nguyên văn tên class đã gỡ vào đây — làm vậy là dựng lại đúng
+        // cái rule vừa xoá trong bundle, và làm mọi phép grep kiểm chứng báo dương tính giả.
+        <div
+          className="min-h-screen flex items-center justify-center"
+          style={{ background: 'var(--tea-color-bg-page-default, #f2f4f8)' }}
+        >
+          <div className="text-sm" style={{ color: 'var(--tea-color-text-secondary, rgba(0, 0, 0, 0.7))' }}>
+            {t('app.checkingSession')}
+          </div>
         </div>
       );
     }

@@ -8,18 +8,18 @@
 ._asset-code-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 ._asset-code-content-card {
-  --card-body-padding: 16px;
+  --card-body-padding: 20px;
 }
 
 ._asset-code-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 ._asset-code-toolbar,
@@ -60,7 +60,7 @@
 ._codelist-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
+  gap: 16px;
 }
 
 /* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
@@ -73,7 +73,7 @@
   min-height: 184px;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
+  padding: 16px;
   border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
   background: var(--app-surface-2, var(--tea-color-bg-primary-default));

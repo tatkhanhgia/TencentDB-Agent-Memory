@@ -752,6 +752,7 @@ export function createL2Runner(opts: {
 
     let processedTotal = 0;
     let anyEmptyExtraction = false;
+    let anyExtractionFailed = false;
     for (const groupRecords of grouped.values()) {
       const ctx = groupRecords[0];
       const groupStorage = scopedStorage(storage, ctx);
@@ -789,7 +790,15 @@ export function createL2Runner(opts: {
       const preTotalProcessed = preState.total_processed;
 
       const extractResult = await extractor.extract(memories);
-      if (!(extractResult.success && extractResult.memoriesProcessed > 0)) continue;
+      if (!extractResult.success) {
+        // Hard failure (LLM error / timeout). The records stay unconsumed and the
+        // cursor must not advance — surface it so the caller can retry instead of
+        // reporting the round as "no new data".
+        anyExtractionFailed = true;
+        logger.warn(`${TAG} [L2] Extraction failed for scope=${groupScope} — records left unconsumed`);
+        continue;
+      }
+      if (extractResult.memoriesProcessed <= 0) continue;
       if (extractResult.emptyExtraction) {
         anyEmptyExtraction = true;
         logger.warn(`${TAG} [L2] Extraction produced no file changes (empty run), skipping checkpoint increment`);
@@ -824,6 +833,7 @@ export function createL2Runner(opts: {
       logger.debug?.(`${TAG} [L2] Extraction complete: processed=${processedTotal}, latestCursor=${latestCursor}`);
       return { latestCursor: latestCursor || undefined };
     }
+    if (anyExtractionFailed) return { failed: true };
     if (anyEmptyExtraction) return { skipped: true };
   };
 }

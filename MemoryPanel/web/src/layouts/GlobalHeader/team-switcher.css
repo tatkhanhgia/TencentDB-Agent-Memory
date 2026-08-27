@@ -30,15 +30,33 @@
   border-color: var(--tea-color-border-secondary-default);
 }
 
+/* M5 N3: chu tren avatar doi tu `--tea-color-text-on-bg-brand-default` sang
+   `--app-team-avatar-fg`. Token cu la mau chu cho nen BRAND, dat len 10 sac team
+   thi sai cap — `bg-emerald-500` ra 2,31:1 o ca hai theme. */
 ._memory-team-switcher-avatar,
 ._memory-team-switcher-item-avatar {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  color: var(--tea-color-text-on-bg-brand-default);
+  color: var(--app-team-avatar-fg);
+  background: var(--app-team-avatar-none);
   font-weight: 600;
   border-radius: 4px;
 }
+
+/* 10 sac avatar team — class do `utils/color.ts` sinh ra tu team_id (on dinh).
+   Gia tri khai o `theme-tokens.css`, tu lat theo theme (D12). */
+._team-avatar--rose { background: var(--app-team-avatar-rose); }
+._team-avatar--amber { background: var(--app-team-avatar-amber); }
+._team-avatar--blue { background: var(--app-team-avatar-blue); }
+._team-avatar--emerald { background: var(--app-team-avatar-emerald); }
+._team-avatar--violet { background: var(--app-team-avatar-violet); }
+._team-avatar--cyan { background: var(--app-team-avatar-cyan); }
+._team-avatar--orange { background: var(--app-team-avatar-orange); }
+._team-avatar--pink { background: var(--app-team-avatar-pink); }
+._team-avatar--teal { background: var(--app-team-avatar-teal); }
+._team-avatar--indigo { background: var(--app-team-avatar-indigo); }
+._team-avatar--none { background: var(--app-team-avatar-none); }
 
 ._memory-team-switcher-avatar {
   width: 20px;

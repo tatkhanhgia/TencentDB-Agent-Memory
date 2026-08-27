@@ -50,11 +50,11 @@ export interface SkillInjectorConfig {
  */
 export function wrapAvailableSkillsBlock(listing: string): string {
   return [
-    "以下是你（当前 agent）自带的云端 skill 列表。这些 skill 存储在你的 agent 名下，",
-    "优先使用它们完成任务。如果你觉得自带的 skill 不够，可以用 skill_search 工具",
-    "在团队的 skill 库中检索更多（跨 agent 共享）。",
+    "Below are cloud skills owned by this agent. They are stored under your agent name —",
+    "prefer them for tasks. If built-in skills are not enough, use skill_search",
+    "to discover more from the team skill library (shared across agents).",
     "",
-    "**重要：这些 skill 存储在云端，不能使用 read_file / tool_use 直接访问，\n必须用 Bash 执行 curl 调用上方 <skill_tools> 块中的 skill-bridge 工具。**",
+    "**Important: these skills are in the cloud — do not use read_file / tool_use directly.\nUse Bash + curl with the skill-bridge tools in `<skill_tools>` above.**",
     "",
     listing,
   ].join("\n");

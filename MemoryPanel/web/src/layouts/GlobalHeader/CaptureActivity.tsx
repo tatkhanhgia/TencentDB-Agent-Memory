@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { CheckIcon, ChevronDownIcon, CloseIcon } from 'tea-icons-react';
+import {
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  CircleIcon,
+  CloseIcon,
+  ErrorCircleIcon,
+  NextIcon,
+  PauseCircleIcon,
+  RefreshIcon,
+  SlashIcon,
+} from 'tea-icons-react';
 import {
   captureApi,
   type CaptureRun,
@@ -57,11 +69,22 @@ function kindCounts(run: CaptureRun) {
   ] as const;
 }
 
-function runStatusTheme(run: CaptureRun): 'running' | 'success' | 'danger' | 'neutral' {
-  if (run.status === 'error') return 'danger';
-  if (run.status === 'running' || isDistillationActive(run)) return 'running';
-  if (run.status === 'written') return 'success';
-  return 'neutral';
+type CaptureStatusKind =
+  | 'running' | 'distilling' | 'written' | 'empty'
+  | 'skipped' | 'dryrun' | 'refused' | 'error';
+
+// Thu tu co y nghia: `running` truoc `distilling` de giu dung uu tien nhan cua
+// runStatusKey ngay duoi. Dung dao hai dong do.
+function runStatusKind(run: CaptureRun): CaptureStatusKind {
+  if (run.status === 'error') return 'error';
+  if (run.status === 'running') return 'running';
+  if (isDistillationActive(run)) return 'distilling';
+  if (run.status === 'written') return 'written';
+  if (run.status === 'empty') return 'empty';
+  if (run.status === 'skipped') return 'skipped';
+  if (run.status === 'dry-run') return 'dryrun';
+  if (run.status === 'refused_unbound') return 'refused';
+  return 'error';
 }
 
 function runStatusKey(run: CaptureRun): string {
@@ -82,6 +105,19 @@ function observedLayers(run: CaptureRun): LayerKey[] {
   });
 }
 
+// 5 sac x 8 dau: moi cap (nen, icon) la duy nhat, nen 8 trang thai phan biet duoc
+// ma khong phai doc chu (PLAN §3.3, PM-RULING-M5 §6).
+const STATUS_ICON: Record<CaptureStatusKind, ReactNode> = {
+  running: null,                               // spinner lo phan nay
+  distilling: <RefreshIcon size={11} />,
+  written: <CheckCircleIcon size={11} />,
+  empty: <CircleIcon size={11} />,
+  skipped: <NextIcon size={11} />,
+  dryrun: <PauseCircleIcon size={11} />,
+  refused: <SlashIcon size={11} />,
+  error: <ErrorCircleIcon size={11} />,
+};
+
 function StatusChip({
   run,
   t,
@@ -89,9 +125,13 @@ function StatusChip({
   run: CaptureRun;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
+  const kind = runStatusKind(run);
   return (
-    <span className={`_capture-status-chip _capture-status-chip--${runStatusTheme(run)}`}>
+    <span className={`_capture-status-chip _capture-status-chip--${kind}`}>
       {isRunActive(run) && <span className="_capture-spinner" aria-hidden="true" />}
+      {STATUS_ICON[kind] != null && (
+        <span className="_capture-status-chip-icon" aria-hidden="true">{STATUS_ICON[kind]}</span>
+      )}
       {t(runStatusKey(run))}
     </span>
   );

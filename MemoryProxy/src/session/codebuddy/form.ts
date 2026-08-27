@@ -11,34 +11,43 @@
  */
 
 import type { TeamOption } from "../types.js";
+import {
+  ASSET_CONFIRM_FORM_TITLE,
+  ASSET_CONFIRM_NO,
+  ASSET_CONFIRM_QUESTION,
+  ASSET_CONFIRM_YES,
+  agentSelectQuestion,
+  AGENT_TASK_FORM_TITLE,
+  COMBINED_FORM_TITLE,
+  containsSessionInitFormTitle,
+  RETRY_FORM_TITLE,
+  SKIP_LABEL,
+  taskSelectQuestion,
+  TEAM_FORM_TITLE,
+  TEAM_SELECT_QUESTION,
+} from "../labels.js";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 export const TOOL_NAME = "ask_followup_question";
 export const TOOLCALL_PREFIXES = ["call_session_init_", "toolu_session_init_"] as const;
 
-export const TEAM_FORM_TITLE = "会话初始化 — 选择 Team";
-export const AGENT_TASK_FORM_TITLE = "会话初始化 — 选择 Agent 与任务";
-export const RETRY_FORM_TITLE = "未能识别选择，请重新选择";
-/** 兼容旧测试的总标题（cleaner.ts 检测用）。 */
-export const COMBINED_FORM_TITLE = "会话初始化 — 选择 Team / Agent / 任务";
+export {
+  TEAM_FORM_TITLE,
+  AGENT_TASK_FORM_TITLE,
+  RETRY_FORM_TITLE,
+  COMBINED_FORM_TITLE,
+  SKIP_LABEL,
+  ASSET_CONFIRM_YES,
+  ASSET_CONFIRM_NO,
+  ASSET_CONFIRM_FORM_TITLE,
+};
 
-export const SKIP_LABEL = "本次不关联（跳过注入，直接放行）";
 export const PATH_SEP = " / ";
-
-export const ASSET_CONFIRM_YES = "是，关联团队资产";
-export const ASSET_CONFIRM_NO = "否，本次不关联";
-export const ASSET_CONFIRM_FORM_TITLE = "会话初始化 — 是否关联团队资产";
 
 /** Returns true if the given string contains any CodeBuddy form title marker. */
 export function containsFormTitle(s: string): boolean {
-  return (
-    s.includes(COMBINED_FORM_TITLE) ||
-    s.includes(TEAM_FORM_TITLE) ||
-    s.includes(AGENT_TASK_FORM_TITLE) ||
-    s.includes(RETRY_FORM_TITLE) ||
-    s.includes(ASSET_CONFIRM_FORM_TITLE)
-  );
+  return containsSessionInitFormTitle(s);
 }
 
 /** Returns true if a tool_call id belongs to a CodeBuddy session-init form. */
@@ -83,7 +92,7 @@ function buildFollowupQuestionArgs(data: FormData): { title: string; questions: 
   if (stage === "asset_confirm") {
     questions.push({
       id: "asset_confirm",
-      question: "本次对话是否要关联团队资产？",
+      question: ASSET_CONFIRM_QUESTION,
       options: [ASSET_CONFIRM_YES, ASSET_CONFIRM_NO],
       multiSelect: false,
     });
@@ -93,7 +102,7 @@ function buildFollowupQuestionArgs(data: FormData): { title: string; questions: 
   if (stage === "team") {
     questions.push({
       id: "team",
-      question: "请选择本次会话所属的 Team：",
+      question: TEAM_SELECT_QUESTION,
       options: [
         ...teams.map((t) => `${t.team_name} (${t.team_id.slice(-8)})`),
       ],
@@ -112,7 +121,7 @@ function buildFollowupQuestionArgs(data: FormData): { title: string; questions: 
     ];
     questions.push({
       id: "agent",
-      question: `请选择「${team.team_name}」下要使用的 Agent：`,
+      question: agentSelectQuestion(team.team_name),
       options: agentLabelOptions,
       multiSelect: false,
     });
@@ -130,7 +139,7 @@ function buildFollowupQuestionArgs(data: FormData): { title: string; questions: 
   if (taskOptions.length > 0) {
     questions.push({
       id: "task",
-      question: `请选择「${team.team_name}」下关联的任务：`,
+      question: taskSelectQuestion(team.team_name),
       options: taskOptions,
       multiSelect: false,
     });

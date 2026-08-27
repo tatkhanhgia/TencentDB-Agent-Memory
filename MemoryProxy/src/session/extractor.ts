@@ -12,10 +12,11 @@
 
 import type { SessionInitData, AgentOption, TaskOption, TeamOption } from "./types.js";
 import { PATH_SEP, SKIP_LABEL, MORE_LABEL } from "./form.js";
+import { LEGACY_SKIP_LABEL } from "./labels.js";
 
 // ── Path A: Match from option text (ask_followup_question click result) ────────
 
-const SKIP_RE = /跳过|不关联|skip/i;
+const SKIP_RE = /skip|don'?t link|not link|decline|bypass|跳过|不关联/i;
 
 /** Bypass 标记：用户选了"本次不关联"，整个 session-init 直接跳过。 */
 export const BYPASS_MARKER = "__bypass__" as const;
@@ -177,7 +178,7 @@ export function extractTeamFromOptionText(
 
   // 检测"本次不关联"→ 直接 bypass（只在已提取到 teamText 时判断，
   // 避免 content 中表单选项文本里的 "跳过/不关联" 误触发 bypass）
-  if (teamText && (teamText.includes(SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
+  if (teamText && (teamText.includes(SKIP_LABEL) || teamText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
     return BYPASS_MARKER;
   }
 
@@ -407,7 +408,7 @@ export function extractFromOptionText(
   }
 
   // 检测 Agent 选了"本次不关联"→ bypass（同上，仅在明确提取到 agentText 时判断）
-  if (agentText && (agentText.includes(SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
+  if (agentText && (agentText.includes(SKIP_LABEL) || agentText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
     return { agent_id: BYPASS_MARKER };
   }
 

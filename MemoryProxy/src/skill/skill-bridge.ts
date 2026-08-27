@@ -572,7 +572,7 @@ export function createSkillBridgeHandler(
       // 等 core 接口上线后, 这里改成透传到新接口即可。当前先返回明确错误。
       return envelope(
         40003,
-        `${TAG} extract: skill_extract 触发路径已下线, 请等待 core 侧手动归档接口上线后重试`,
+        `${TAG} extract: skill_extract trigger path is deprecated; retry after the core manual-archive API is available`,
         400,
       );
     } else {

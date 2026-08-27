@@ -12,7 +12,7 @@ import { useTeams, writeActiveTeamId, invalidateBackendCache, invalidateTeamCach
 import { useBackendStore } from '@/stores/backend';
 import { type TeamRole } from '@/services/useCurrentRole';
 import { teamsApi } from '@/lib/teamApi';
-import { teamColor } from '@/utils/color';
+import { TEAM_AVATAR_FALLBACK, teamColor } from '@/utils/color';
 import { tea } from '@/lib/tea-bridge';
 import './team-switcher.css';
 
@@ -71,7 +71,7 @@ export function TeamSwitcher({ userRole }: { userRole: TeamRole | null }) {
           className="_memory-team-switcher-trigger"
           title={active?.name ?? t('teamSwitcher.selectTeam')}
         >
-          <span className={`_memory-team-switcher-avatar ${active ? teamColor(active.team_id) : 'bg-primary'}`}>
+          <span className={`_memory-team-switcher-avatar ${active ? teamColor(active.team_id) : TEAM_AVATAR_FALLBACK}`}>
             {(active?.name ?? '?').slice(0, 1).toUpperCase()}
           </span>
           <span className="_memory-team-switcher-meta">

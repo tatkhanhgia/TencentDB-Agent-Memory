@@ -17,3 +17,65 @@
   border: none;
   background-color: transparent;
 }
+
+/* ===== M6 C7: markdown phải theo theme =====
+   Bệnh: `MarkdownView.tsx:16` gắn `prose prose-slate`. Plugin
+   @tailwindcss/typography khai toàn bộ `--tw-prose-*` bằng bảng slate KHOÁ CỨNG cho
+   nền sáng, rồi áp lên `:where(h1..h6, p, strong, code, a, li, blockquote, ...)`.
+   Những rule đó ĐÈ màu kế thừa từ `._md-view`, nên đặt `color` ở khung ngoài là vô
+   dụng. Ở dark, heading ra slate-900 #0f172a trên nền card #202020 = **1,10:1**,
+   đoạn văn 1,57:1 — chữ gần như biến mất.
+
+   Đây là hồi quy của chính đợt này: trước khi ta ship dark mode (D2/D3), `prose-slate`
+   luôn nằm trên nền sáng nên không thể trượt. FUNCTIONAL-CHECKLIST C7 đã cảnh báo đúng
+   từ đầu và bị bỏ quên 5 milestone.
+
+   Cách chữa theo D12 — MỘT hệ token, tự lật theo theme: mọi `--tw-prose-*` chỉ là
+   ALIAS trỏ vào token Tea. Token Tea đã tự đổi giá trị theo `[theme-mode]`, nên KHÔNG
+   khai hai bảng màu song song và không có nhánh `dark:` nào phải bảo trì. Thêm một
+   theme sau này cũng không phải sửa file này.
+
+   Độ đặc hiệu: `.prose-slate` là 0,1,0 và `._md-view` cũng 0,1,0 — bằng nhau thì thứ
+   tự nạp quyết định, mà thứ tự nạp của Vite không phải thứ đảm bảo được. Bọc trong
+   `:root[data-ui-skin='v2']` để lên 0,3,0, thắng chắc chắn, đồng thời giữ đường lui
+   D14: gỡ thuộc tính là về skin cũ.
+
+   Mọi token dưới đây đã kiểm CÓ THẬT trong `default-pack.css` (cạm bẫy 7). */
+:root[data-ui-skin='v2'] ._md-view {
+  /* chữ chính, tiêu đề, in đậm — light 17,49 · dark 13,38 */
+  --tw-prose-body: var(--tea-color-text-primary);
+  --tw-prose-headings: var(--tea-color-text-primary);
+  --tw-prose-bold: var(--tea-color-text-primary);
+  --tw-prose-kbd: var(--tea-color-text-primary);
+
+  /* chữ phụ — light 8,52 · dark 5,84 */
+  --tw-prose-lead: var(--tea-color-text-secondary);
+  --tw-prose-quotes: var(--tea-color-text-secondary);
+  --tw-prose-captions: var(--tea-color-text-secondary);
+
+  /* liên kết — light 6,54 · dark 6,32 */
+  --tw-prose-links: var(--tea-color-text-link-default);
+
+  /* code: nền tertiary, chữ primary ĐỌC TRÊN NỀN ĐÓ — light 15,06 · dark 9,84.
+     KHÔNG dùng text-secondary ở đây: trên nền pre của dark nó chỉ còn 4,79. */
+  --tw-prose-code: var(--tea-color-text-primary);
+  --tw-prose-pre-code: var(--tea-color-text-primary);
+  --tw-prose-pre-bg: var(--tea-color-bg-tertiary-default);
+
+  /* Đường kẻ và dấu đầu dòng — ngưỡng ranh giới ≥3.
+     Token VIỀN của Tea không đủ: border-primary/secondary chỉ 1,22/1,18 ở light và
+     1,39 ở dark; border-tertiary khá nhất cũng mới 2,51 (dark) — đều DƯỚI 3. Nên
+     phải bước lên một token CHỮ: text-tertiary cho 5,74 light / 6,68 dark.
+     Hệ quả nhìn thấy được: kẻ bảng và gạch ngang đậm hơn mặc định của Tailwind.
+     `counters`/`bullets` là chữ thật (số và dấu đầu dòng) nên chúng cần ≥4,8 —
+     cùng token này cũng đạt. */
+  --tw-prose-hr: var(--tea-color-text-tertiary);
+  --tw-prose-quote-borders: var(--tea-color-text-tertiary);
+  --tw-prose-th-borders: var(--tea-color-text-tertiary);
+  --tw-prose-td-borders: var(--tea-color-text-tertiary);
+  --tw-prose-counters: var(--tea-color-text-tertiary);
+  --tw-prose-bullets: var(--tea-color-text-tertiary);
+
+  /* Viền phím <kbd>: bóng trang trí, không phải ranh giới phải đọc được. */
+  --tw-prose-kbd-shadows: var(--tea-color-border-tertiary-default);
+}

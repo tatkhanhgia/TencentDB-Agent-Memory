@@ -35,10 +35,11 @@ import { useTeams } from '@/services';
 import { useSkillDetailCache } from '@/services/use-skill-detail-cache';
 import { useUserDisplayName } from '@/services/user-profile-store';
 import { Select, Button, Text, Segment, Card, List } from 'tea-component';
-import { LockOnIcon, ShareIcon, AppIcon, UserIcon, DeleteIcon } from 'tea-icons-react';
+import { LockOnIcon, ShareIcon, AppIcon, UserIcon, DeleteIcon, ToolsIcon, ErrorCircleIcon } from 'tea-icons-react';
 import { tea } from '@/lib/tea-bridge';
 import { AssetPageHeader } from '@/pages/ResourcePage/components/AssetPageHeader';
 import { AssetSplitLayout } from '@/pages/ResourcePage/components/AssetSplitLayout';
+import { AssetStatePanel } from '@/pages/ResourcePage/components/AssetStatePanel';
 import {
   AssetListPanel,
   AssetItemHeader,
@@ -128,6 +129,7 @@ export default function SkillsPanel({
   }, [activeTeamId, myUserId]);
 
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [showImport, setShowImport] = useState(false);
   const [showFork, setShowFork] = useState(false);
@@ -191,6 +193,7 @@ export default function SkillsPanel({
     }
     const seq = ++refreshSeqRef.current;
     setLoading(true);
+    setLoadError(null);
     // 立即清空旧数据 —— 否则切 tab 时会先看到上一个 tab 的列表，
     // 新数据到了才突然替换，视觉上就是"闪一下"。
     setSkills([]);
@@ -272,6 +275,7 @@ export default function SkillsPanel({
     } catch (err) {
       if (seq !== refreshSeqRef.current) return;
       tea.notify.error(err);
+      setLoadError(err instanceof Error ? err.message : String(err));
       setSkills([]);
       setVisibilityMap({});
     } finally {
@@ -482,11 +486,47 @@ export default function SkillsPanel({
             getItemId={(s) => s.skill_id}
             onSelect={(s) => setSelectedSkillId(s.skill_id)}
             emptyText={
-              tab === 'fixed' && !selectedAgent
-                ? t('skills.empty.fixed.noAgent')
-                : tab === 'fixed'
-                  ? t('skills.empty.fixed.hasAgent', { agent: selectedAgent })
-                  : t('skills.empty.team')
+              tab === 'fixed' && !selectedAgent ? (
+                <AssetStatePanel
+                  tone="filtered"
+                  icon={<AppIcon />}
+                  title={t('skills.empty.fixed.noAgent.title')}
+                  desc={t('skills.empty.fixed.noAgent')}
+                />
+              ) : tab === 'fixed' ? (
+                <AssetStatePanel
+                  icon={<ToolsIcon />}
+                  title={t('skills.empty.fixed.hasAgent.title')}
+                  desc={t('skills.empty.fixed.hasAgent', { agent: selectedAgent })}
+                  action={
+                    <Button type="primary" onClick={() => setShowImport(true)} disabled={teamAgents.length === 0}>
+                      {t('skills.import')}
+                    </Button>
+                  }
+                />
+              ) : (
+                <AssetStatePanel
+                  icon={<ToolsIcon />}
+                  title={t('skills.empty.team.title')}
+                  desc={t('skills.empty.team')}
+                  action={
+                    <Button type="primary" onClick={() => setShowImport(true)} disabled={teamAgents.length === 0}>
+                      {t('skills.import')}
+                    </Button>
+                  }
+                />
+              )
+            }
+            error={
+              loadError == null ? undefined : (
+                <AssetStatePanel
+                  tone="error"
+                  icon={<ErrorCircleIcon />}
+                  title={t('common.error.title')}
+                  desc={t('common.error.desc')}
+                  action={<Button type="primary" onClick={() => void refresh()}>{t('common.retry')}</Button>}
+                />
+              )
             }
             renderItem={(s) => {
               const ownerIsMe = !!myUserId && s.owner_user_id === myUserId;

@@ -43,7 +43,7 @@
 
 ._memory-workbench-list-empty {
   border: 1px dashed var(--tea-color-border-primary-default);
-  border-radius: 6px;
+  border-radius: var(--app-radius-sm, 4px);
   padding: 32px 16px;
   text-align: center;
 }
@@ -55,15 +55,19 @@
   gap: 12px;
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._memory-workbench-task-card {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 6px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   font: inherit;
   color: inherit;
   text-align: left;
@@ -73,6 +77,7 @@
 
 ._memory-workbench-task-card:hover {
   border-color: var(--tea-color-border-brand-default);
+  background-color: var(--tea-color-bg-primary-hover);
 }
 
 ._memory-workbench-task-card:hover ._memory-workbench-task-card-chevron {
@@ -94,7 +99,10 @@
   flex-shrink: 0;
   font-size: 11px;
   line-height: 16px;
-  padding: 1px 6px;
+  /* M5 R5: 1px 6px -> 0 5px, bu dung 1px vien moi o moi canh de KHONG cao them
+     (cam bay 9 — cam noi hop). */
+  padding: 0 5px;
+  border: 1px solid var(--app-chip-border-neutral);
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -102,11 +110,13 @@
 ._memory-workbench-status-pill--running {
   color: var(--tea-color-text-brand-default);
   background-color: var(--tea-color-bg-brand-lighten-default);
+  border-color: var(--app-chip-border-brand);
 }
 
 ._memory-workbench-status-pill--completed {
   color: var(--tea-color-text-success-default);
   background-color: var(--tea-color-bg-success-lighten-default);
+  border-color: var(--app-chip-border-success);
 }
 
 ._memory-workbench-task-card-title {
@@ -286,13 +296,13 @@
 }
 
 ._memory-workbench-skeleton-card {
-  border: 1px solid var(--tea-color-border, #e7e7e7);
-  border-radius: 8px;
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
+  border-radius: var(--app-radius-md, 6px);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--tea-color-bg-container, #fff);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
 }
 
 ._memory-workbench-skeleton-line {
@@ -300,9 +310,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary, #f5f5f5) 0%,
-    var(--tea-color-bg-tertiary, #ececec) 50%,
-    var(--tea-color-bg-secondary, #f5f5f5) 100%
+    var(--tea-color-bg-secondary-default) 0%,
+    var(--tea-color-bg-tertiary-default) 50%,
+    var(--tea-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-workbench-skeleton-shimmer 1.4s ease-in-out infinite;

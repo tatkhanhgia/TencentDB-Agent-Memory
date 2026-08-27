@@ -113,9 +113,14 @@ export default function AgentGrid({
 
   function renderOwner(agent: StoreAgent) {
     const ownerIsMe = agent.owner_user_id === currentUser;
+    const ownerMember = activeTeam.members.find((m) => m.user_id === agent.owner_user_id);
+    const displayName = ownerMember?.username?.trim() || agent.owner_user_id || t('agentGrid.card.ownerUnset');
     return (
-      <span className={`_memory-agents-owner-tag${ownerIsMe ? ' _memory-agents-owner-tag--me' : ''}`}>
-        {agent.owner_user_id || t('agentGrid.card.ownerUnset')}{ownerIsMe && t('agentGrid.owner.you')}
+      <span
+        className={`_memory-agents-owner-tag${ownerIsMe ? ' _memory-agents-owner-tag--me' : ''}`}
+        title={agent.owner_user_id || undefined}
+      >
+        {displayName}{ownerIsMe && t('agentGrid.owner.you')}
       </span>
     );
   }
@@ -221,7 +226,12 @@ export default function AgentGrid({
             return (
               <div key={agent.agent_id} className={`_memory-agents-card${editable ? ' _memory-agents-card--editable' : ''}`}>
                 <div className="_memory-agents-card-head">{renderName(agent)}</div>
-                <div className="_memory-agents-card-id">{t('agentGrid.card.id', { id: agent.agent_id })}</div>
+                <div className="_memory-agents-card-id">
+                  <span>{t('agentGrid.card.id', { id: agent.agent_id })}</span>
+                  <span className="_memory-agents-card-updated">
+                    {t('agentGrid.card.updatedAt', { time: new Date(agent.updated_at_ms).toLocaleString() })}
+                  </span>
+                </div>
                 <div className="_memory-agents-card-desc">{agent.description || t('common.noDescription')}</div>
                 <div className="_memory-agents-owner-row">
                   <span>{t('agentGrid.card.owner')}</span>

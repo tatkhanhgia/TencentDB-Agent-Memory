@@ -68,7 +68,7 @@ export interface L1RunnerResult {
   hasFullBacklog?: boolean;
 }
 export type L1Runner = (params: { sessionKey: string; msg: CapturedMessage[]; bg_msg: CapturedMessage[] }) => Promise<L1RunnerResult | void>;
-export interface L2RunnerResult { latestCursor?: string; }
+export interface L2RunnerResult { latestCursor?: string; skipped?: boolean; failed?: boolean; }
 export type L2Runner = (sessionKey: string, cursor?: string) => Promise<L2RunnerResult | void>;
 export type L3Runner = () => Promise<void>;
 export type PipelineStatePersister = (states: Record<string, CheckpointPipelineSessionState>) => Promise<void>;

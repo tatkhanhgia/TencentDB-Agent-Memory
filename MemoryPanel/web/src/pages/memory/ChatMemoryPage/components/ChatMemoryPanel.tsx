@@ -14,7 +14,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { Button, Segment, Select } from 'tea-component';
-import { AppIcon, UsergroupIcon, UserIcon } from 'tea-icons-react';
+import { AppIcon, UsergroupIcon, UserIcon, ChatIcon, SearchIcon, ErrorCircleIcon } from 'tea-icons-react';
 import { useAgents, useTeams } from '@/services';
 import { readAuth } from '@/components/LoginGate';
 import { tea } from '@/lib/tea-bridge';
@@ -39,6 +39,7 @@ import {
   AssetItemMeta,
   AssetItemTime,
 } from '@/pages/ResourcePage/components/AssetListPanel';
+import { AssetStatePanel } from '@/pages/ResourcePage/components/AssetStatePanel';
 import './chat-memory-panel.css';
 
 const LAYER_PAGE_SIZE: Record<MemoryLayer, number> = { L0: 20, L1: 20, L2: 50, L3: 50 };
@@ -67,6 +68,7 @@ export default function ChatMemoryPanel(
 
   const [blocks, setBlocks] = useState<MemoryBlock[]>([]);
   const [blocksLoading, setBlocksLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [layer, setLayer] = useState<MemoryLayer>('L1');
   const [layerPages, setLayerPages] = useState<
@@ -117,6 +119,7 @@ export default function ChatMemoryPanel(
     }
     const seq = ++fetchSeqRef.current;
     setBlocksLoading(true);
+    setLoadError(null);
     // 立即清空旧数据 —— 否则切 tab 时会先看到上一个 tab 的列表，
     // 新数据到了才突然替换，视觉上就是"闪一下"。
     setBlocks([]);
@@ -152,6 +155,7 @@ export default function ChatMemoryPanel(
     } catch (e: any) {
       if (seq !== fetchSeqRef.current) return;
       tea.notify.error(e?.message || t('memory.notify.loadFailed'));
+      setLoadError(e?.message ?? String(e));
       setBlocks([]);
     } finally {
       if (seq === fetchSeqRef.current) setBlocksLoading(false);
@@ -584,7 +588,41 @@ export default function ChatMemoryPanel(
                 b.scope === 'private' &&
                 b.uploaded_by_user_id !== currentUserId
               }
-              emptyText={t('memory.empty.filtered')}
+              emptyText={
+                blocks.length === 0 ? (
+                  <AssetStatePanel
+                    icon={<ChatIcon />}
+                    title={t('memory.empty.title')}
+                    desc={t('memory.empty.desc')}
+                    action={<Button type="primary" onClick={() => setShowImport(true)}>{t('memory.import')}</Button>}
+                  />
+                ) : scopeTab === 'fixed' && !agentFilter ? (
+                  <AssetStatePanel
+                    tone="filtered"
+                    icon={<AppIcon />}
+                    title={t('memory.empty.noAgent.title')}
+                    desc={t('memory.empty.noAgent.desc')}
+                  />
+                ) : (
+                  <AssetStatePanel
+                    tone="filtered"
+                    icon={<SearchIcon />}
+                    title={t('memory.empty.filtered')}
+                    desc={t('memory.empty.filtered.desc')}
+                  />
+                )
+              }
+              error={
+                loadError == null ? undefined : (
+                  <AssetStatePanel
+                    tone="error"
+                    icon={<ErrorCircleIcon />}
+                    title={t('common.error.title')}
+                    desc={t('common.error.desc')}
+                    action={<Button type="primary" onClick={() => void fetchBlocks()}>{t('common.retry')}</Button>}
+                  />
+                )
+              }
               renderItem={(b) => {
                 const isRevoked =
                   scopeTab === 'fixed' &&

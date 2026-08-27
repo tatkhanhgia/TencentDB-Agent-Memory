@@ -12,6 +12,7 @@ import { SettingsDialog } from '@/components/SettingsDialog';
 import { type TeamRole } from '@/services/useCurrentRole';
 import { TeamSwitcher } from './TeamSwitcher';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { ThemeSwitcher } from './ThemeSwitcher';
 import { CaptureActivity } from './CaptureActivity';
 import './style.css';
 
@@ -44,6 +45,8 @@ export function GlobalHeader({
       {/* 右侧：同步状态 + 语言切换 + 用户菜单 */}
       <div className="_memory-global-header-right">
         <CaptureActivity />
+
+        <ThemeSwitcher />
 
         <LanguageSwitcher />
 

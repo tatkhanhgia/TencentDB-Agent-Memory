@@ -14,7 +14,7 @@
 }
 
 ._capture-badge--error {
-  color: var(--tea-color-text-danger);
+  color: var(--tea-color-text-error-default);
 }
 
 ._capture-neutral-dot,
@@ -30,7 +30,7 @@
 }
 
 ._capture-error-dot {
-  background: var(--tea-color-bg-danger-default);
+  background: var(--tea-color-bg-error-default);
 }
 
 ._capture-spinner {
@@ -58,7 +58,9 @@
   position: absolute;
   inset: 0;
   border: 0;
-  background: rgba(17, 24, 39, 0.24);
+  /* M3 §3.5: mask khoá cứng -> token, để nó theo theme. Đúng MỘT dòng này và dòng
+     box-shadow bên dưới; cấu trúc chip / Drawer / timeline không đụng (S5 canh). */
+  background: var(--tea-color-bg-mask-default, rgba(17, 24, 39, 0.24));
   cursor: default;
 }
 
@@ -71,7 +73,7 @@
   display: flex;
   flex-direction: column;
   background: var(--tea-color-bg-primary-default);
-  box-shadow: -8px 0 28px rgba(17, 24, 39, 0.12);
+  box-shadow: var(--app-shadow-md, -8px 0 28px rgba(17, 24, 39, 0.12));
 }
 
 ._capture-drawer-header {
@@ -125,7 +127,7 @@
   padding: 9px 10px;
   border: 1px solid var(--tea-color-border-warning-default);
   border-radius: 5px;
-  background: var(--tea-color-bg-warning-light-default);
+  background: var(--tea-color-bg-warning-lighten-default);
   color: var(--tea-color-text-warning);
   font-size: 12px;
 }
@@ -290,31 +292,59 @@
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
-  padding: 3px 7px;
+  /* 3px 7px -> 2px 6px: bu dung 1px vien moi o moi canh, GIU NGUYEN chieu cao hop
+     (cam bay 9 — cam noi hop de day mat do). */
+  padding: 2px 6px;
   border-radius: 12px;
   font-size: 11px;
   line-height: 14px;
   white-space: nowrap;
 }
 
-._capture-status-chip--running {
+._capture-status-chip-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+/* brand — dang chay / dang chung cat */
+._capture-status-chip--running,
+._capture-status-chip--distilling {
   background: var(--tea-color-bg-brand-lighten-default);
-  color: var(--tea-color-text-brand);
+  color: var(--tea-color-text-brand-default);
+  border: 1px solid var(--app-chip-border-brand);
 }
 
-._capture-status-chip--success {
-  background: var(--tea-color-bg-success-light-default);
-  color: var(--tea-color-text-success);
+/* success — da ghi */
+._capture-status-chip--written {
+  background: var(--tea-color-bg-success-lighten-default);
+  color: var(--tea-color-text-success-default);
+  border: 1px solid var(--app-chip-border-success);
 }
 
-._capture-status-chip--danger {
-  background: var(--tea-color-bg-danger-light-default);
-  color: var(--tea-color-text-danger);
+/* warning — chay khan / bi tu choi vi chua bind */
+._capture-status-chip--dryrun,
+._capture-status-chip--refused {
+  background: var(--tea-color-bg-warning-lighten-default);
+  color: var(--tea-color-text-warning-default);
+  border: 1px solid var(--app-chip-border-warning);
 }
 
-._capture-status-chip--neutral {
-  background: var(--tea-color-bg-secondary-default);
-  color: var(--tea-color-text-secondary);
+/* error */
+._capture-status-chip--error {
+  background: var(--tea-color-bg-error-lighten-default);
+  color: var(--tea-color-text-error-default);
+  border: 1px solid var(--app-chip-border-error);
+}
+
+/* neutral — khong co gi de ghi / bi bo qua.
+   Chu la `text-tertiary`, KHONG phai `text-secondary` (PM chot 2026-08-26, phuong an B):
+   nen neutral doi sang `bg-tertiary-default` nen 55% trang tren #383838 chi con 4,79 —
+   qua AA 4,5 nhung duoi moc uy quyen 4,8. `text-tertiary` (60%) cho 5,45 L / 5,37 D. */
+._capture-status-chip--empty,
+._capture-status-chip--skipped {
+  background: var(--tea-color-bg-tertiary-default);
+  color: var(--tea-color-text-tertiary);
+  border: 1px solid var(--app-chip-border-neutral);
 }
 
 ._capture-run-details {
@@ -343,7 +373,7 @@
 }
 
 ._capture-state-copy--amber {
-  background: var(--tea-color-bg-warning-light-default);
+  background: var(--tea-color-bg-warning-lighten-default);
   color: var(--tea-color-text-warning);
 }
 

@@ -1,0 +1,209 @@
+/*
+ * theme-tokens.css — toàn bộ override token v2 của M1 (theme / token / font).
+ *
+ * Nạp SAU `default-pack.css`, `tea-themeable.css` và `index.css`, TRƯỚC
+ * `tea-override.css` (SPEC-M1 §4.1) để thắng token mà vẫn để adapter component
+ * nói lời cuối.
+ *
+ * Mọi thứ ở đây scope dưới [data-ui-skin='v2']: gỡ thuộc tính đó ra là giao diện
+ * cũ quay lại nguyên vẹn — đó là đường lui bắt buộc của M1.
+ */
+
+/* Chưa bật skin v2 thì giữ đúng hành vi cũ: color-scheme light.
+   (Dòng `color-scheme: light` trong `:root` của index.css đã được gỡ ở M1 —
+   luật fallback nằm ở đây, theo selector cụ thể.) */
+:root:not([data-ui-skin='v2']) {
+  color-scheme: light;
+}
+
+/* O3 — bỏ Roboto, dùng system stack của Tea.
+   Dòng `font-family: Roboto, …` trong index.css được GIỮ NGUYÊN và chỉ bị đè
+   (PM ruling B4): specificity (0,2,1) ở đây thắng `body` (0,0,1), nên gỡ
+   data-ui-skin là font cũ trở lại. */
+:root[data-ui-skin='v2'] body {
+  font-family: var(--tea-font-family-default);
+}
+
+/* ===== Light ===== */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  color-scheme: light;
+  --tea-color-text-tertiary: rgba(0, 0, 0, 0.6);
+  --tea-color-text-disabled: rgba(0, 0, 0, 0.55);
+  --tea-color-text-success-default: #055e45;
+  --tea-color-text-on-bg-success-lighten-default: #055e45;
+  /* M5 R5(A): #c04100 chi dat 4,61 tren nen soft #ffeddf — duoi moc uy quyen 4,8. */
+  --tea-color-text-warning-default: #ad3a00;
+  --tea-color-text-error-default: #b42c3f;
+}
+
+/* ===== Dark =====
+   O2: KHÔNG khai báo lại --tea-color-text-secondary ở bất kỳ khối theme nào
+   (55% trắng đã đạt AA: 5,84 trên card / 6,08 trên page).
+   B1 đã ĐẢO (PM, 2026-08-26 — `PM-RULING-B1-REVERSED.md`): thiếu token này thì
+   text-success-default ở dark là #07a872 trên nền soft #223b30 = 3,95, TRƯỢT AA;
+   có token thì 8,86. Consumer thật: pill "completed" của Task Board và layer
+   success của Chat Memory. */
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  color-scheme: dark;
+  --tea-color-bg-brand-default: #0863e8;
+  /* M6: D11 dua cap brand dark tu 3,69 len 4,59 — qua AA 4,5 nhung bien chi 0,09,
+     va hover con 4,54. Tea khai text-on-bg-brand-default = palette-white-90; nang
+     rieng ve CHU len white-100 dua cap len 5,30 ma KHONG dung toi nen, nen
+     `bg-brand vs card` giu nguyen 3,07. Nang NEN thi keo nguoc: chu tang, nen tut
+     xuong duoi nguong UI 3,0. Chi de o khoi dark; light (5,61) khong dung toi. */
+  --tea-color-text-on-bg-brand-default: var(--tea-color-palette-white-100);
+  --tea-color-text-success-default: #b3e8d1;
+  --tea-color-text-disabled: rgba(255, 255, 255, 0.5);
+}
+
+/* ===== State patch E1 (JARVIS duyệt 2026-08-26; khối rộng 6 token do PM duyệt — B3) =====
+   `.tea-btn:hover` và `.tea-btn:active` tiêu thụ CẢ `bg-` lẫn `border-on-bg-`;
+   đè mỗi `bg-` sẽ để lại viền màu cũ quanh nút đã đổi màu. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --tea-color-bg-brand-hover: #0048c2;
+  --tea-color-border-on-bg-brand-hover: #0048c2;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-bg-brand-hover: #1265e5;
+  --tea-color-border-on-bg-brand-hover: #1265e5;
+  --tea-color-bg-brand-active: #0863e8;
+  --tea-color-border-on-bg-brand-active: #0863e8;
+}
+
+/* ===== on-error PA3b (JARVIS chốt vá trong M1 — `PM-RULING-ON-ERROR.md`;
+   TL chọn phương án — `TL-DECISION-ON-ERROR.md`) =====
+   Đảo chữ sang đen 90% thay vì đổi nền: blast radius ~6 điểm thay vì 14, và không
+   đụng `bg-error-default`/`-hover` nên progress, alert dot, menu subbadge giữ nguyên.
+
+   Ghim thêm `active` về đúng màu `default` — cùng lý do và cùng tiền lệ với E1: chữ
+   đen trên nền `active` cũ (đỏ sẫm) chỉ được 3,22 light / 3,92 dark, tức vá một cặp
+   trượt lại đẻ ra một cặp trượt khác. Phản hồi khi nhấn vẫn còn qua
+   `transform: scale(0.97)` của `.tea-btn:active`. Ghim cả `border-on-bg-` theo bài B3:
+   `.tea-btn--error:active` tiêu thụ CẢ hai. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --tea-color-text-on-bg-error-default: rgba(0, 0, 0, 0.9);
+  --tea-color-bg-error-active: #f64041;
+  --tea-color-border-on-bg-error-active: #f64041;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-text-on-bg-error-default: rgba(0, 0, 0, 0.9);
+  --tea-color-bg-error-active: #fb6e77;
+  --tea-color-border-on-bg-error-active: #fb6e77;
+}
+
+/* ===== M2: token bề mặt / elevation (PLAN §4.4, POSITION-TL §D) =====
+   Alias thuần thì để var() tự flip theo theme, không nhân đôi giá trị (D12). */
+:root[data-ui-skin='v2'] {
+  --app-surface-canvas: var(--tea-color-bg-page-default);
+  --app-surface-1: var(--tea-color-bg-primary-default);
+  --app-surface-2: var(--tea-color-bg-secondary-default);
+  --app-surface-3: var(--tea-color-bg-tertiary-default);
+  --app-border-subtle: var(--tea-color-border-primary-default);
+  --app-shadow-xs: var(--tea-shadow-xs);
+  --app-shadow-md: var(--tea-shadow-md);
+}
+
+/* `surface-overlay` và `border-strong` không có token Tea tương ứng một-một nên
+   khai theo theme, giá trị đúng bảng POSITION-TL D. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-surface-overlay: #ffffff;
+  --app-border-strong: #d6dbe3;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-surface-overlay: #2c2c2c;
+  --app-border-strong: #4b4b4b;
+}
+
+/* ===== M4: thang bán kính bo góc (TL-RULING-RADIUS.md, mockup D5 §160/193) =====
+   Hình học thuần, không phụ thuộc theme nên khai một khối. Scope dưới
+   `[data-ui-skin='v2']` để đường lui D14 còn sống: gỡ attribute là về skin cũ.
+   Ràng buộc kèm: file nhóm KHÔNG hard-code px bán kính mới — dùng thang này. */
+:root[data-ui-skin='v2'] {
+  --app-radius-sm: 4px;
+  --app-radius-md: 6px;
+  --app-radius-lg: 8px;
+}
+
+/* ===== M5 R5(B): text-tertiary o dark =====
+   50% trang tren bg-tertiary #383838 chi 4,24 — TRUOT AA 4,5.
+   Consumer that: <Tag> mac dinh o Workbench/Members. Light da 60% tu M1;
+   thay doi nay chi lam hai theme doi xung. */
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --tea-color-text-tertiary: hsla(0, 0%, 100%, 0.6);
+}
+
+/* ===== M5 R5: token vien cho chip/pill/tag/avatar =====
+   Benh: nen soft cua Tea chi chenh nen the 1,00–1,19 lan => phan tu bien mat khi
+   nen card doi (M2 khoi theo doi). Chua bang VIEN, khong bang bong (charter M5).
+   Alias thuan: mot he token, gia tri tu lat theo theme (D12) — khong khai hai lan,
+   khong de hex moi. Moi gia tri do duoc deu >=3 (nguong ranh gioi UI, PLAN §4.3)
+   tren CA hai be mat cha va CA hai theme. */
+:root[data-ui-skin='v2'] {
+  --app-chip-border-brand: var(--tea-color-text-brand-default);
+  --app-chip-border-success: var(--tea-color-text-success-default);
+  --app-chip-border-warning: var(--tea-color-text-warning-default);
+  --app-chip-border-error: var(--tea-color-text-error-default);
+  --app-chip-border-neutral: var(--tea-color-text-tertiary);
+}
+
+/* ===== M5 R6 muc 2: nen panel minh hoa cua LoginGate =====
+   Ngoai le D13 mo rong: panel trai cua LoginGate luon toi o ca hai theme, cung ly do
+   mien tru voi 34 hex cua HeroIllustration. Co y KHONG lat theo theme. */
+:root[data-ui-skin='v2'] {
+  --app-login-hero-bg: #0b1120;
+}
+
+/* ===== M5 N3: so mau avatar team (PM-RULING-M5 §2) =====
+   Truoc: 10 class Tailwind `bg-*-500` + chu `--tea-color-text-on-bg-brand-default`.
+   `bg-emerald-500` #10b981 chi dat 2,31:1 o CA hai theme — truot AA nang, va la so
+   te nhat do duoc trong ca dot. Acceptance PO §3.3 doi AA o ca hai theme.
+   Nay: van 10 tong mau cu (nen team khong doi ban sac) nhung day sac o light /
+   keo sac o dark, doi lai chu cho tuong ung. Thap nhat toan bang: 5,02 (amber
+   light) — tren moc uy quyen 4,8. Bang so day du nam trong bao cao Lo B. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-team-avatar-fg: #ffffff;
+  --app-team-avatar-rose: #be123c;
+  --app-team-avatar-amber: #b45309;
+  --app-team-avatar-blue: #1d4ed8;
+  --app-team-avatar-emerald: #047857;
+  --app-team-avatar-violet: #6d28d9;
+  --app-team-avatar-cyan: #155e75;
+  --app-team-avatar-orange: #c2410c;
+  --app-team-avatar-pink: #be185d;
+  --app-team-avatar-teal: #0f766e;
+  --app-team-avatar-indigo: #4338ca;
+  --app-team-avatar-none: #475569;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-team-avatar-fg: #101010;
+  --app-team-avatar-rose: #fda4af;
+  --app-team-avatar-amber: #fcd34d;
+  --app-team-avatar-blue: #93c5fd;
+  --app-team-avatar-emerald: #6ee7b7;
+  --app-team-avatar-violet: #c4b5fd;
+  --app-team-avatar-cyan: #67e8f9;
+  --app-team-avatar-orange: #fdba74;
+  --app-team-avatar-pink: #f9a8d4;
+  --app-team-avatar-teal: #5eead4;
+  --app-team-avatar-indigo: #a5b4fc;
+  --app-team-avatar-none: #cbd5e1;
+}
+
+/* ===== M6 no N1: chot chet cuoi cung trong src/ =====
+   WikiSourcesPanel.tsx TYPE_COLORS.overview tung tro --tea-color-bg-yellow-default —
+   khong ton tai. Tea khong co ho mau "vang" (chi brand/warning/success/error), nen
+   khai token app moi thay vi muon token Tea. Hue ~55 (vang that) de PHAN BIET voi
+   --tea-color-bg-warning-hover (source, hue cam ~26-27) trong cung chu giai.
+   Doi voi: >=3:1 (nguong UI khong chu, PLAN §4.3) tren CA nen card lan nen page,
+   CA hai theme — do that: light card 4.71 / page 4.27, dark card 12.22 / page 13.32. */
+:root[data-ui-skin='v2'][theme-mode='light'] {
+  --app-graph-type-overview: #807500;
+}
+
+:root[data-ui-skin='v2'][theme-mode='dark'] {
+  --app-graph-type-overview: #f4e225;
+}

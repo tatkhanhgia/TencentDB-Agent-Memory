@@ -10,6 +10,17 @@
   gap: 16px;
 }
 
+/* M4 G1: mật độ trang này 100% đến từ HÀNG BẢNG (không có card nội dung nào ở
+ * đây — cả tea-card/tea-table/tea-table__header/TR đều là chrome surface-1).
+ * Tea mặc định td padding-top/bottom 14px; mockup POSITION-DESIGN §C2 chốt
+ * hàng bảng 40px = cell padding dọc 9px. Chỉ scope [data-ui-skin='v2'] —
+ * skin cũ giữ nguyên hành vi Tea gốc. */
+[data-ui-skin='v2'] ._memory-apikey-body .tea-table__box td,
+[data-ui-skin='v2'] ._memory-apikey-body .tea-table__box th {
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+
 /* 覆盖 Tea 全局 `.tea-card { margin: 0 auto }`（在 Card.js 自带样式中），
  * 那个样式会让 Card 收缩到内容宽度并水平居中——上方 Table Card 因为
  * 内部 Table 把 Card 撑满了所以看不出，但「客户端接入地址」这种

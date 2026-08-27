@@ -271,13 +271,19 @@
   font-size: 12px;
 }
 
+/* M2 luật 6 (TL duyệt riêng): chip xuống MỘT bậc thang vì card cha vừa lên
+   surface-2 — nếu để nguyên thì chip trùng màu card ở CẢ HAI theme (light
+   canvas==surface-2 theo bảng D) và thước sẽ bắt 28 vi phạm mới. Chỉ đổi
+   background; chip giữ viền nên vẫn đọc ra là chip. */
 ._memory-mounted-chip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border: 1px solid var(--tea-color-border-primary-default);
+  /* M5 R5: vien DA co tu M4 nhung mau chi chenh nen cha 1,10 => vo hinh.
+     Sua o day la doi MAU vien, khong phai them vien. */
+  border: 1px solid var(--app-chip-border-neutral);
   border-radius: 4px;
-  background: var(--tea-color-bg-secondary-default);
+  background: var(--app-surface-3, var(--tea-color-bg-secondary-default));
   padding: 4px 8px;
 }
 
@@ -350,13 +356,17 @@
   }
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._memory-member-card {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   padding: 8px 12px;
   transition:
     background-color 0.15s,
@@ -382,11 +392,14 @@
   font-weight: 700;
   background: var(--tea-color-bg-secondary-default);
   color: var(--tea-color-text-secondary);
+  /* M5 R5: box-sizing: border-box (tea-override.css:7) nen 1px vien KHONG noi hop. */
+  border: 1px solid var(--app-chip-border-neutral);
 }
 
 ._memory-member-avatar--owner {
   background: var(--tea-color-bg-warning-lighten-default);
   color: var(--tea-color-text-warning-default);
+  border-color: var(--app-chip-border-warning);
 }
 
 ._memory-member-info {
@@ -403,6 +416,9 @@
   white-space: nowrap;
 }
 
+/* M5 R5: KHONG them vien o day. Day la chu tran, khong co nen — vien quanh mot
+   chu tran la de ra mot hop khong co trong thiet ke. M2 do "nen vs cha = 1,00"
+   la do NHAM doi tuong: chu nay dat 5,94 L / 5,41 D so voi nen, tuc DOC DUOC. */
 ._memory-member-me-tag {
   font-size: 12px;
   color: var(--tea-color-text-brand-default);
@@ -950,19 +966,23 @@
 
 ._memory-agents-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
 
+/* M2 (SPEC-M2 §4b, bản đồ đã TL duyệt): nhóm nội bộ trong section = surface-2,
+   KHÔNG viền. Viền giữ nguyên 1px nhưng lấy chính màu nền nên vô hình — bỏ hẳn
+   `border` sẽ đổi hình học, mà hình học là M3/M4. Fallback là giá trị Tea cũ:
+   gỡ `data-ui-skin` là dòng này quay về đúng nghĩa trước M2. */
 ._memory-agents-card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   min-width: 0;
   padding: 12px;
-  border: 1px solid var(--tea-color-border-primary-default);
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
   border-radius: 4px;
-  background: var(--tea-color-bg-primary-default);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
   transition:
     background-color 0.15s ease-in-out,
     border-color 0.15s ease-in-out;
@@ -1025,9 +1045,21 @@
 }
 
 ._memory-agents-card-id {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   color: var(--tea-color-text-tertiary);
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 12px;
+}
+
+._memory-agents-card-updated {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
 }
 
 ._memory-agents-card-desc,
@@ -1038,8 +1070,11 @@
 }
 
 ._memory-agents-card-desc {
-  min-height: 40px;
+  min-height: 20px;
   line-height: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 ._memory-agents-owner-row {
@@ -1059,7 +1094,9 @@
 ._memory-agents-owner-tag {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
+  /* M5 R5: 1px 6px -> 0 5px, bu dung 1px vien moi o moi canh (cam bay 9). */
+  padding: 0 5px;
+  border: 1px solid var(--app-chip-border-brand);
   border-radius: 4px;
   font-size: 11px;
   line-height: 16px;
@@ -1076,8 +1113,8 @@
 
 ._memory-agents-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
 }
 
 ._memory-agents-card-actions {
@@ -1115,13 +1152,13 @@
 }
 
 ._memory-agents-skeleton-card {
-  border: 1px solid var(--tea-color-border, #e7e7e7);
-  border-radius: 8px;
+  border: 1px solid var(--app-surface-2, var(--tea-color-border-primary-default));
+  border-radius: var(--app-radius-sm, 4px);
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: var(--tea-color-bg-container, #fff);
+  background: var(--app-surface-2, var(--tea-color-bg-primary-default));
 }
 
 ._memory-agents-skeleton-line {
@@ -1129,9 +1166,9 @@
   border-radius: 4px;
   background: linear-gradient(
     90deg,
-    var(--tea-color-bg-secondary, #f5f5f5) 0%,
-    var(--tea-color-bg-tertiary, #ececec) 50%,
-    var(--tea-color-bg-secondary, #f5f5f5) 100%
+    var(--tea-color-bg-secondary-default) 0%,
+    var(--tea-color-bg-tertiary-default) 50%,
+    var(--tea-color-bg-secondary-default) 100%
   );
   background-size: 200% 100%;
   animation: _memory-agents-skeleton-shimmer 1.4s ease-in-out infinite;

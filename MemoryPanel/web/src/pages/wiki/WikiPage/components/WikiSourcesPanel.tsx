@@ -36,6 +36,7 @@ import {
   LoadingIcon,
   CheckCircleIcon,
   CloseCircleIcon,
+  ErrorCircleIcon,
   CheckIcon,
   ChevronRightIcon,
   DeleteIcon,
@@ -60,6 +61,7 @@ import { readAuth } from '@/components/LoginGate';
 import { tea } from '@/lib/tea-bridge';
 import { findExistingRawFilenames, formatOverwriteFilenames } from './wiki-upload-utils';
 import { AssetPageHeader } from '@/pages/ResourcePage/components/AssetPageHeader';
+import { AssetStatePanel, AssetSkeleton } from '@/pages/ResourcePage/components/AssetStatePanel';
 import './wiki-sources-panel.css';
 
 /** Wiki 仅允许上传 Markdown 类文件（.md / .markdown / .txt）。 */
@@ -219,10 +221,10 @@ interface SearchResult {
 const TYPE_COLORS: Record<string, string> = {
   entity: 'var(--tea-color-bg-brand-default)',
   concept: 'var(--tea-color-bg-warning-default)',
-  source: 'var(--tea-color-bg-amber-default)',
+  source: 'var(--tea-color-bg-warning-hover)',
   query: 'var(--tea-color-bg-success-default)',
   synthesis: 'var(--tea-color-bg-error-default)',
-  overview: 'var(--tea-color-bg-yellow-default)',
+  overview: 'var(--app-graph-type-overview)',
   comparison: 'var(--tea-color-bg-secondary-active)',
   finding: 'var(--tea-color-bg-warning-default)',
   thesis: 'var(--tea-color-bg-error-default)',
@@ -261,6 +263,7 @@ export default function WikiSourcesPanel() {
   const { t } = useTranslation();
   const [sources, setSources] = useState<WikiDetail[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [scopeTab, setScopeTab] = useState<WikiScopeTab>('team');
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -424,6 +427,7 @@ export default function WikiSourcesPanel() {
     }
     const seq = ++fetchSeqRef.current;
     setLoading(true);
+    setLoadError(null);
     // 立即清空旧数据 —— 否则切 tab 时会先看到上一个 tab 的列表，
     // 新数据到了才突然替换，视觉上就是"闪一下"。
     setSources([]);
@@ -436,6 +440,7 @@ export default function WikiSourcesPanel() {
     } catch (e: any) {
       if (seq !== fetchSeqRef.current) return;
       tea.notify.error(e);
+      setLoadError(e?.message ?? String(e));
       setSources([]);
     } finally {
       if (seq === fetchSeqRef.current) setLoading(false);
@@ -1618,20 +1623,29 @@ export default function WikiSourcesPanel() {
           </Table.ActionPanel>
 
           {loading ? (
-            <StatusTip status="loading" />
+            <AssetSkeleton variant="grid" count={6} />
+          ) : loadError != null ? (
+            <AssetStatePanel
+              tone="error"
+              icon={<ErrorCircleIcon />}
+              title={t('common.error.title')}
+              desc={t('common.error.desc')}
+              action={<Button type="primary" onClick={() => void fetchSources()}>{t('common.retry')}</Button>}
+            />
           ) : sources.length === 0 ? (
-            <StatusTip
-              status="empty"
-              emptyText={
-                <div className="_asset-wiki-empty">
-                  <BooksIcon size="large" />
-                  <Text>{t('wiki.empty.title')}</Text>
-                  <Text theme="label">{t('wiki.empty.desc')}</Text>
-                </div>
-              }
+            <AssetStatePanel
+              icon={<BooksIcon />}
+              title={t('wiki.empty.title')}
+              desc={t('wiki.empty.desc')}
+              action={<Button type="primary" onClick={() => setShowCreate(true)}>{t('wiki.create')}</Button>}
             />
           ) : filteredSources.length === 0 ? (
-            <StatusTip status="empty" emptyText={t('wiki.empty.filtered')} />
+            <AssetStatePanel
+              tone="filtered"
+              icon={<SearchIcon />}
+              title={t('wiki.empty.filtered')}
+              desc={t('wiki.empty.filtered.desc')}
+            />
           ) : viewMode === 'card' ? (
             <div className="_asset-wiki-grid">
               {filteredSources.map((source) => (

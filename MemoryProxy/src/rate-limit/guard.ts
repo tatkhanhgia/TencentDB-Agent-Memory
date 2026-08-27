@@ -94,8 +94,8 @@ export function buildRateLimitResponse(
   decision: RateLimitDecision,
 ): Response {
   const message = decision.reason === "qpm"
-    ? "该模型请求频率已达上限，请稍后重试"
-    : "该模型输入 Token 用量已达上限，请稍后重试";
+    ? "Request rate limit exceeded for this model. Please retry later."
+    : "Input token limit exceeded for this model. Please retry later.";
   const code = decision.reason === "qpm" ? "qpm_exceeded" : "input_tpm_exceeded";
   const body = protocol === "anthropic"
     ? { type: "error", error: { type: "rate_limit_error", message } }

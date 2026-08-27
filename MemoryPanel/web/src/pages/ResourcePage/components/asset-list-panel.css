@@ -11,12 +11,10 @@
 
 /* ===== 面板容器 ===== */
 ._alp {
-  min-height: 480px;
   padding: 16px;
   border: 1px solid var(--tea-color-border-primary-default);
   border-radius: 6px;
   background: var(--tea-color-bg-primary-default);
-  box-shadow: var(--tea-shadow-xs);
   display: flex;
   flex-direction: column;
 }
@@ -63,12 +61,10 @@
   flex: 1;
 }
 
-/* ===== 空态 ===== */
+/* ===== 空态 — 容器只负责居中，字号/颜色交给 ._aes（AssetStatePanel） ===== */
 ._alp-empty {
-  padding: 48px 12px;
-  text-align: center;
-  font-size: 13px;
-  color: var(--tea-color-text-tertiary);
+  display: flex;
+  justify-content: center;
 }
 
 /* ===== 列表项 ===== */
@@ -114,34 +110,6 @@
 
 ._alp-item--disabled ._alp-item-btn:hover {
   background-color: transparent;
-}
-
-/* ===== 骨架屏 ===== */
-._alp-skeleton {
-  padding: 12px 12px;
-  animation: _alp-pulse 1.5s ease-in-out infinite;
-}
-
-._alp-skeleton-line {
-  border-radius: 3px;
-  background: var(--tea-color-bg-secondary-default);
-  margin-bottom: 6px;
-}
-
-._alp-skeleton-primary {
-  height: 14px;
-  width: 60%;
-}
-
-._alp-skeleton-secondary {
-  height: 12px;
-  width: 85%;
-  opacity: 0.6;
-}
-
-@keyframes _alp-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
 }
 
 /* ============================================================
@@ -237,7 +205,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 480px;
   font-size: 13px;
   color: var(--tea-color-text-tertiary);
 }

@@ -1795,6 +1795,8 @@ export class TdaiGateway {
       onL1Complete: statefulManager.advanceL2TimerAfterL1.bind(statefulManager),
       // L2 完成后设置 maxInterval 兜底 timer
       onL2Complete: statefulManager.armL2MaxInterval.bind(statefulManager),
+      // L2 被推迟(L1 在跑)或抽取失败时，把 L2 timer 重新拉回 now + l2Delay
+      onL2Deferred: statefulManager.advanceL2TimerAfterL1.bind(statefulManager),
       // 与 skill worker 共享的节点级并发上限
       permitPool: this.workerPermitPool ?? undefined,
     }, this.logger);
@@ -2503,13 +2505,17 @@ export class TdaiGateway {
 
         const result = await core.runL2WithStore(task.sessionId, store, storage ?? undefined, cursor);
 
-        // Mark task as skipped if L2 had no new records to process
-        if (result.skipped) {
+        // Mark task as skipped if L2 had no new records to process. `failed` is
+        // a different outcome: extraction ran and errored, so the round must be
+        // re-armed rather than recorded as a no-op (see cascadeSchedule).
+        if (result.failed) {
+          (task as any)._l2Failed = true;
+        } else if (result.skipped) {
           (task as any)._l2Skipped = true;
         }
 
         // Report credit + new scenes as memory
-        if (gateway.quotaManager && !result.skipped) {
+        if (gateway.quotaManager && !result.skipped && !result.failed) {
           const { creditUsed } = result;
           let newScenes = 0;
           if (storage) {

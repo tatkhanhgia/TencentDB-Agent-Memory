@@ -175,6 +175,13 @@ export interface L2RunnerResult {
   latestCursor?: string;
   /** True if no new records were found and extraction was skipped. */
   skipped?: boolean;
+  /**
+   * True if records *were* found but every extraction attempt failed (e.g. the
+   * upstream LLM returned an error). Distinct from `skipped`: the records are
+   * still unconsumed, so the caller must retry rather than treat the round as
+   * a no-op.
+   */
+  failed?: boolean;
 }
 
 /** L2 extraction runner — processes a single session's records. */
@@ -936,6 +943,18 @@ export class MemoryPipelineManager {
         `${TAG} [${sessionKey}] L2 runner failed: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
       );
       // Even on failure, arm maxInterval so we retry eventually
+      this.armL2MaxInterval(sessionKey);
+      return;
+    }
+
+    // Extraction ran but errored (e.g. upstream LLM failure). The records are
+    // still unconsumed: do NOT advance the cursor and do NOT cascade to L3 —
+    // just arm the maxInterval fallback so the round is retried. Mirrors the
+    // `_l2Failed` branch in pipeline-worker.cascadeSchedule().
+    if (result?.failed === true) {
+      this.logger?.warn(
+        `${TAG} [${sessionKey}] L2 extraction failed (records unconsumed, cursor unchanged) — arming maxInterval, not triggering L3`,
+      );
       this.armL2MaxInterval(sessionKey);
       return;
     }

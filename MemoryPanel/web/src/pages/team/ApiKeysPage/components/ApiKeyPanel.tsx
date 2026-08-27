@@ -287,7 +287,7 @@ export default function ApiKeyPanel() {
       <Card>
         <Card.Body title={t('apiKey.endpoint.title')}>
           {auth?.instance_name && (
-            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--text-weak)' }}>
+            <div style={{ marginBottom: 8, fontSize: 11, color: 'var(--tea-color-text-tertiary)' }}>
               {t('apiKey.endpoint.current')}
               <code>{auth.instance_name}</code>
               <span style={{ opacity: 0.6, marginLeft: 6 }}>({auth.instance_id})</span>

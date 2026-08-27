@@ -9,14 +9,10 @@
 }
 
 ._memory-skill-detail-empty {
-  min-height: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-._memory-skill-detail-body {
-  min-height: 480px;
+  padding: 48px 0;
 }
 
 ._memory-skill-detail-head {

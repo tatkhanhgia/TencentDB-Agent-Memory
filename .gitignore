@@ -130,3 +130,10 @@ coverage/
 # only if the whole team shares ONE Core; with a Core per developer a committed
 # id is a phantom on every other machine.
 .tdai-project.env
+
+# Agent harness config — máy nào cấu hình của máy đó, không phải tài sản dự án
+.claude/
+.opencode/
+
+# File backup do script deploy tự sinh (start-*.sh.bak-YYYYMMDD-HHMMSS)
+*.bak-[0-9]*

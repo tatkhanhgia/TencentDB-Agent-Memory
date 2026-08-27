@@ -14,10 +14,15 @@
 
 import type { SessionInitData, TeamOption } from "../types.js";
 import { SKIP_LABEL, MORE_LABEL, ASSET_CONFIRM_YES, ASSET_CONFIRM_NO } from "./form.js";
+import {
+  LEGACY_ASSET_CONFIRM_NO,
+  LEGACY_ASSET_CONFIRM_YES,
+  LEGACY_SKIP_LABEL,
+} from "../labels.js";
 
 // ── Markers ────────────────────────────────────────────────────────────────────
 
-const SKIP_RE = /跳过|不关联|skip/i;
+const SKIP_RE = /skip|don'?t link|not link|decline|bypass|跳过|不关联/i;
 export const BYPASS_MARKER = "__bypass__" as const;
 export const MORE_MARKER = "__more__" as const;
 
@@ -54,21 +59,19 @@ export function extractAssetConfirm(content: string): boolean | null {
   // （只有精准匹配 ASSET_CONFIRM_YES / ASSET_CONFIRM_NO 可以通过）
   const allowLoosePattern = answerOnly.length <= 80;
 
-  // 精准匹配：完整选项文本
-  if (answerOnly.includes(ASSET_CONFIRM_YES)) {
+  // Exact match: full option label (EN + legacy ZH)
+  if (answerOnly.includes(ASSET_CONFIRM_YES) || answerOnly.includes(LEGACY_ASSET_CONFIRM_YES)) {
     return true;
   }
-  if (answerOnly.includes(ASSET_CONFIRM_NO)) {
+  if (answerOnly.includes(ASSET_CONFIRM_NO) || answerOnly.includes(LEGACY_ASSET_CONFIRM_NO)) {
     return false;
   }
 
   if (allowLoosePattern) {
-    // 宽松"是"匹配：必须以"是"或"确认"开头，避免"是否"、"不是"等误匹配
-    if (/^(?:是|确认)[，,\s]/i.test(answerOnly.trim())) {
+    if (/^(?:yes|confirm|是|确认)[，,\s]/i.test(answerOnly.trim()) || /^yes,\s*bind/i.test(answerOnly.trim())) {
       return true;
     }
-    // 宽松"否"匹配
-    if (/^(?:否|不[，,\s]|跳过|skip)/i.test(answerOnly.trim())) {
+    if (/^(?:no|skip|否|不[，,\s]|跳过)/i.test(answerOnly.trim())) {
       return false;
     }
   }
@@ -206,7 +209,7 @@ export function extractTeamFromOptionText(
   const teamText = extractAnswerFromJson(content);
 
   // 检测"本次不关联"→ bypass
-  if (teamText && (teamText.includes(SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
+  if (teamText && (teamText.includes(SKIP_LABEL) || teamText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(teamText.trim()))) {
     return BYPASS_MARKER;
   }
 
@@ -367,7 +370,7 @@ export function extractFromOptionText(
   }
 
   // 检测 "本次不关联" → bypass
-  if (agentText && (agentText.includes(SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
+  if (agentText && (agentText.includes(SKIP_LABEL) || agentText.includes(LEGACY_SKIP_LABEL) || SKIP_RE.test(agentText.trim()))) {
     return { agent_id: BYPASS_MARKER };
   }
 

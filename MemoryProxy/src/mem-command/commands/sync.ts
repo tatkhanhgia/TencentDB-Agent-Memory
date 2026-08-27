@@ -16,12 +16,12 @@ import { refreshSessionCache, type RefreshResult } from "../../routes/session-re
 
 function buildSuccessMessage(result: RefreshResult): string {
   const parts: string[] = [];
-  parts.push("Skill / 记忆 / Knowledge 资产");
+  parts.push("Skill / Memory / Knowledge assets");
   if (result.agentRefreshed || result.taskRefreshed) {
-    parts.push("Task & Agent 描述");
+    parts.push("Task & Agent descriptions");
   }
-  const scope = parts.join("、");
-  return `✅ 所有资产注入已刷新（${scope}），耗时 ${result.tookMs}ms`;
+  const scope = parts.join(", ");
+  return `✅ All asset injections refreshed (${scope}), took ${result.tookMs}ms`;
 }
 
 export async function executeSync(ctx: MemCommandContext): Promise<MemCommandResult> {
@@ -37,7 +37,7 @@ export async function executeSync(ctx: MemCommandContext): Promise<MemCommandRes
 
   const messageText = result.success
     ? buildSuccessMessage(result)
-    : `❌ 资产刷新失败：${result.error ?? "未知错误"}`;
+    : `❌ Asset refresh failed: ${result.error ?? "unknown error"}`;
 
   const response = buildMemResponse(messageText, {
     protocol: ctx.protocol,
